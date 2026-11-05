@@ -24,7 +24,7 @@ export default function Inventory() {
         <table className="min-w-full text-sm text-left">
           <thead className="bg-gray-100 text-gray-700 border-b border-gray-200">
             <tr>
-              <th className="py-3 px-6 font-medium">Medicine ID</th>
+              <th className="py-3 px-6 font-medium">Medicine Name</th>
               <th className="py-3 px-6 font-medium">Batch Number</th>
               <th className="py-3 px-6 font-medium">Available Quantity</th>
               <th className="py-3 px-6 font-medium">Sale Price</th>
@@ -32,16 +32,16 @@ export default function Inventory() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 text-gray-700">
-            {inventory.map((inv) => (
-              <tr key={inv.id} className="hover:bg-blue-50 transition-colors">
-                <td className="py-3 px-6 font-medium text-hospital-navy">{inv.medicine_id}</td>
+            {inventory.map((inv, index) => (
+              <tr key={index} className="hover:bg-blue-50 transition-colors">
+                <td className="py-3 px-6 font-medium text-hospital-navy">{inv.medicine_name}</td>
                 <td className="py-3 px-6">{inv.batch_number}</td>
                 <td className="py-3 px-6">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${inv.quantity > 10 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {inv.quantity} units
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${inv.stock_qty > 10 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {inv.stock_qty} units
                   </span>
                 </td>
-                <td className="py-3 px-6 font-medium">₹{inv.sale_price?.toFixed(2)}</td>
+                <td className="py-3 px-6 font-medium">₹{inv.sale_rate?.toFixed(2)}</td>
                 <td className="py-3 px-6">{inv.expiry_date?.split('T')[0]}</td>
               </tr>
             ))}
