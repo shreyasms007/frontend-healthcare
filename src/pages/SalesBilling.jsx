@@ -107,6 +107,14 @@ export default function SalesBilling() {
   }
 
   const handleAddItem = () => {
+    // --- NEW STRICT INVENTORY VALIDATION ---
+    if (!currentItem.batch_id || currentItem.batch_id === "") {
+      alert("⚠️ Invalid Item: You must select a medicine from the dropdown list. You cannot bill items that are not in your live inventory.");
+      setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 }); 
+      return; 
+    }
+    // ---------------------------------------
+
     if (!currentItem.medicine_id || currentItem.qty <= 0) return
     setFormData(prev => ({
       ...prev,
@@ -135,7 +143,8 @@ export default function SalesBilling() {
 
     // Automatically grab pending item inputs if user forgot to click "Add"
     let itemsToSave = [...safeItems]
-    if (currentItem.medicine_id && currentItem.qty > 0) {
+    // NEW STRICT CHECK: Also require batch_id to be present before auto-saving pending inputs
+    if (currentItem.medicine_id && currentItem.batch_id && currentItem.qty > 0) {
       itemsToSave.push({
         ...currentItem,
         amount: currentItem.qty * currentItem.rate
@@ -184,7 +193,8 @@ export default function SalesBilling() {
   const handlePrint = async () => {
     try {
       let itemsToPrint = [...safeItems]
-      if (currentItem.medicine_id && currentItem.qty > 0) {
+      // NEW STRICT CHECK: Also require batch_id to be present before auto-printing pending inputs
+      if (currentItem.medicine_id && currentItem.batch_id && currentItem.qty > 0) {
         itemsToPrint.push({
           ...currentItem,
           amount: currentItem.qty * currentItem.rate
