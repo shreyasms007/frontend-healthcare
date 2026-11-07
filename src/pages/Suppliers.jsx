@@ -66,7 +66,6 @@ export default function AccountMaster() {
   // ADDED: The function to handle saving data to the backend
   const handleSubmit = async () => {
     try {
-      // Adjust '/api/suppliers' if your Go backend uses a different endpoint for accounts
       const res = await fetch(`${API_BASE}/api/suppliers`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
