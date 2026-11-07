@@ -155,7 +155,7 @@ export default function SalesBilling() {
     }
 
     const method = activeView === 'edit' ? 'PUT' : 'POST'
-    const url = activeView === 'edit' ? `http://localhost:8081/api/sales/${formData.id}` : 'http://localhost:8081/api/sales'
+    const url = activeView === 'edit' ? `${API_BASE}/api/sales/${formData.id}` : `${API_BASE}/api/sales`
 
     try {
       const res = await fetch(url, {

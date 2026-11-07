@@ -43,7 +43,7 @@ export default function SupplierPayments() {
       return
     }
     try {
-      const res = await fetch(`http://localhost:8081/api/purchases?supplier_id=${supplierId}`)
+      const res = await fetch(`${API_BASE}/api/purchases?supplier_id=${supplierId}`)
       const allBills = (await res.json()) || []
       setUnsettledBills(allBills.filter(b => !b.is_settled && b.balance_amount > 0))
       setSettledBills(allBills.filter(b => b.is_settled || b.paid_amount > 0))
