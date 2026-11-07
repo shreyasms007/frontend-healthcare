@@ -26,10 +26,31 @@ export default function SalesBilling() {
 
   const safeItems = Array.isArray(formData.items) ? formData.items : []
 
+  // --- NEW FIX 3: Load Draft from LocalStorage on Mount ---
   useEffect(() => {
+    const draft = localStorage.getItem('salesBillDraft');
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        // Only load draft if it's a new bill (id is null)
+        if (parsed && parsed.id === null) {
+          setFormData(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse draft", e);
+      }
+    }
     fetchSales()
     fetchInventory()
   }, [])
+
+  // --- NEW FIX 3: Auto-save Draft to LocalStorage on Change ---
+  useEffect(() => {
+    // We only draft New Bills to prevent overriding edited past bills
+    if (formData.id === null && (formData.phone_number !== '' || safeItems.length > 0)) {
+      localStorage.setItem('salesBillDraft', JSON.stringify(formData));
+    }
+  }, [formData])
 
   const fetchSales = async () => {
     try {
@@ -67,6 +88,22 @@ export default function SalesBilling() {
     return Array.from(new Set(sales.filter(s => s.phone_number).map(s => s.phone_number)))
   }, [sales])
 
+  // --- NEW FIX 2: Get Unique Medicines for Dropdown to prevent duplicates ---
+  const uniqueMedicines = useMemo(() => {
+    const names = inventory.map(inv => inv.medicine_name || inv.item_name || inv.name).filter(Boolean);
+    return Array.from(new Set(names));
+  }, [inventory])
+
+  // --- NEW FIX 2: Filter available batches for the currently typed medicine ---
+  const availableBatches = useMemo(() => {
+    return inventory.filter(inv => 
+      (inv.medicine_name === currentItem.medicine_id) || 
+      (inv.item_name === currentItem.medicine_id) || 
+      (inv.name === currentItem.medicine_id)
+    );
+  }, [inventory, currentItem.medicine_id])
+
+
   const handlePhoneChange = (e) => {
     const phone = e.target.value
     const openBill = sales.find(s => s.phone_number === phone && !s.is_issued)
@@ -89,31 +126,69 @@ export default function SalesBilling() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  // --- NEW FIX 1 & 2: Handle Medicine Change & Auto-select Single Batches ---
   const handleMedicineChange = (e) => {
     const val = e.target.value
-    const foundItem = inventory.find(inv => 
+    const batches = inventory.filter(inv => 
       (inv.medicine_name === val) || 
       (inv.item_name === val) || 
-      (inv.name === val) ||
-      (inv.medicine_id === val)
+      (inv.name === val)
     )
+
+    let defaultBatch = ''
+    let defaultRate = 0
+
+    // If medicine has exactly 1 batch, select it automatically
+    if (batches.length === 1) {
+       defaultBatch = batches[0].batch_number || batches[0].batch_id || batches[0].id || ''
+       defaultRate = batches[0].sale_rate || batches[0].rate || batches[0].mrp || batches[0].price || 0
+    }
 
     setCurrentItem(prev => ({
       ...prev,
       medicine_id: val,
-      batch_id: foundItem ? (foundItem.batch_id || foundItem.id || '') : prev.batch_id,
-      rate: foundItem ? (foundItem.rate || foundItem.mrp || foundItem.price || 0) : prev.rate
+      batch_id: defaultBatch, // Reset or Auto-fill batch
+      rate: defaultRate,      // Reset or Auto-fill rate
+      qty: 1
     }))
   }
 
+  // --- NEW FIX 2: Handle Batch Dropdown Change & Auto-fill Rate ---
+  const handleBatchChange = (e) => {
+    const bId = e.target.value;
+    const selectedBatch = availableBatches.find(inv => 
+      (inv.batch_number == bId) || (inv.batch_id == bId) || (inv.id == bId)
+    );
+
+    setCurrentItem(prev => ({
+      ...prev,
+      batch_id: bId,
+      rate: selectedBatch ? (selectedBatch.sale_rate || selectedBatch.rate || selectedBatch.mrp || selectedBatch.price || 0) : prev.rate
+    }));
+  }
+
   const handleAddItem = () => {
-    // --- NEW STRICT INVENTORY VALIDATION ---
-    if (!currentItem.batch_id || currentItem.batch_id === "") {
-      alert("⚠️ Invalid Item: You must select a medicine from the dropdown list. You cannot bill items that are not in your live inventory.");
-      setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 }); 
+    // --- NEW FIX 1: Strict Inventory & Batch Validation ---
+    const isValidMedicine = uniqueMedicines.includes(currentItem.medicine_id);
+    if (!isValidMedicine) {
+      alert("⚠️ Invalid Item: You must select a valid medicine from the dropdown list.");
       return; 
     }
-    // ---------------------------------------
+    
+    if (!currentItem.batch_id || currentItem.batch_id === "") {
+      alert("⚠️ Please select a valid Batch from the dropdown for this medicine.");
+      return; 
+    }
+
+    const selectedInv = availableBatches.find(inv => 
+      (inv.batch_number == currentItem.batch_id) || (inv.batch_id == currentItem.batch_id) || (inv.id == currentItem.batch_id)
+    );
+    
+    if (selectedInv && currentItem.qty > (selectedInv.stock_qty || selectedInv.available_stock || 0)) {
+      alert(`⚠️ Insufficient Stock! Only ${(selectedInv.stock_qty || selectedInv.available_stock || 0)} available in this batch.`);
+      return;
+    }
+    // --------------------------------------------------------
 
     if (!currentItem.medicine_id || currentItem.qty <= 0) return
     setFormData(prev => ({
@@ -141,18 +216,24 @@ export default function SalesBilling() {
       return false
     }
 
-    // Automatically grab pending item inputs if user forgot to click "Add"
     let itemsToSave = [...safeItems]
-    // NEW STRICT CHECK: Also require batch_id to be present before auto-saving pending inputs
-    if (currentItem.medicine_id && currentItem.batch_id && currentItem.qty > 0) {
-      itemsToSave.push({
-        ...currentItem,
-        amount: currentItem.qty * currentItem.rate
-      })
+    
+    // --- NEW FIX 1: Strict Validation for Pending Inputs ---
+    if (currentItem.medicine_id && currentItem.qty > 0) {
+      const isValid = inventory.some(inv => 
+         (inv.medicine_name === currentItem.medicine_id || inv.name === currentItem.medicine_id || inv.item_name === currentItem.medicine_id) && 
+         (inv.batch_number == currentItem.batch_id || inv.batch_id == currentItem.batch_id || inv.id == currentItem.batch_id)
+      );
+      if (isValid) {
+        itemsToSave.push({
+          ...currentItem,
+          amount: currentItem.qty * currentItem.rate
+        })
+      }
     }
 
     if (itemsToSave.length === 0) {
-      alert("Please add at least one medicine item to the bill!")
+      alert("Please add at least one valid medicine item to the bill!")
       return false
     }
 
@@ -174,6 +255,7 @@ export default function SalesBilling() {
       })
 
       if (res.ok) {
+        localStorage.removeItem('salesBillDraft'); // Clear Draft on Success
         fetchSales()
         if (!isIssuedFlag) {
             alert('Bill saved as Open (Unissued).')
@@ -193,16 +275,23 @@ export default function SalesBilling() {
   const handlePrint = async () => {
     try {
       let itemsToPrint = [...safeItems]
-      // NEW STRICT CHECK: Also require batch_id to be present before auto-printing pending inputs
-      if (currentItem.medicine_id && currentItem.batch_id && currentItem.qty > 0) {
-        itemsToPrint.push({
-          ...currentItem,
-          amount: currentItem.qty * currentItem.rate
-        })
+      
+      // --- NEW FIX 1: Strict Validation for Pending Inputs ---
+      if (currentItem.medicine_id && currentItem.qty > 0) {
+        const isValid = inventory.some(inv => 
+           (inv.medicine_name === currentItem.medicine_id || inv.name === currentItem.medicine_id || inv.item_name === currentItem.medicine_id) && 
+           (inv.batch_number == currentItem.batch_id || inv.batch_id == currentItem.batch_id || inv.id == currentItem.batch_id)
+        );
+        if (isValid) {
+          itemsToPrint.push({
+            ...currentItem,
+            amount: currentItem.qty * currentItem.rate
+          })
+        }
       }
 
       if (itemsToPrint.length === 0) {
-        alert("No items to print in this invoice!");
+        alert("No valid items to print in this invoice!");
         return;
       }
 
@@ -258,6 +347,7 @@ export default function SalesBilling() {
 
       doc.save(`Invoice_${formData.phone_number || 'Sale'}.pdf`);
       
+      localStorage.removeItem('salesBillDraft'); // Clear Draft on Print Success
       setFormData({ ...emptyForm })
       setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 })
       setActiveView('list')
@@ -288,7 +378,12 @@ export default function SalesBilling() {
         <div className="flex items-center gap-3">
           <div className="flex bg-gray-200 p-1 rounded-lg ml-4">
             <button
-              onClick={() => { setFormData({ ...emptyForm }); setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 }); setActiveView('create'); }}
+              onClick={() => { 
+                localStorage.removeItem('salesBillDraft'); 
+                setFormData({ ...emptyForm }); 
+                setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 }); 
+                setActiveView('create'); 
+              }}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
                 activeView === 'create' ? 'bg-hospital-teal text-white shadow' : 'text-gray-600 hover:text-hospital-navy'
               }`}
@@ -376,22 +471,37 @@ export default function SalesBilling() {
                     autoComplete="off"
                   />
                   <datalist id="inventory-suggestions">
-                    {inventory.map((inv, idx) => (
-                      <option key={idx} value={inv.medicine_name || inv.name || inv.item_name || inv.medicine_id} />
+                    {uniqueMedicines.map((med, idx) => (
+                      <option key={idx} value={med} />
                     ))}
                   </datalist>
                 </div>
-                <div className="w-32">
+                
+                {/* --- NEW FIX 2: Batch ID is now a Dynamic Select Dropdown --- */}
+                <div className="w-48">
                   <label className="block text-xs text-gray-500 mb-1">Batch ID</label>
-                  <input type="number" className="w-full border p-2 rounded" value={currentItem.batch_id} onChange={e => setCurrentItem({...currentItem, batch_id: Number(e.target.value)})} />
+                  <select 
+                    className="w-full border p-2 rounded bg-white text-sm" 
+                    value={currentItem.batch_id} 
+                    onChange={handleBatchChange}
+                  >
+                    <option value="">Select Batch</option>
+                    {availableBatches.map((b, idx) => (
+                      <option key={idx} value={b.batch_number || b.batch_id || b.id}>
+                        {b.batch_number || b.batch_id || b.id} (Qty: {b.stock_qty || b.available_stock || 0})
+                      </option>
+                    ))}
+                  </select>
                 </div>
+                {/* ---------------------------------------------------------- */}
+
                 <div className="w-24">
                   <label className="block text-xs text-gray-500 mb-1">Quantity</label>
-                  <input type="number" className="w-full border p-2 rounded" value={currentItem.qty} onChange={e => setCurrentItem({...currentItem, qty: Number(e.target.value)})} />
+                  <input type="number" min="1" className="w-full border p-2 rounded" value={currentItem.qty} onChange={e => setCurrentItem({...currentItem, qty: Number(e.target.value)})} />
                 </div>
                 <div className="w-32">
                   <label className="block text-xs text-gray-500 mb-1">Rate</label>
-                  <input type="number" className="w-full border p-2 rounded" value={currentItem.rate} onChange={e => setCurrentItem({...currentItem, rate: Number(e.target.value)})} />
+                  <input type="number" className="w-full border p-2 rounded bg-gray-50" readOnly value={currentItem.rate} />
                 </div>
                 <button type="button" onClick={handleAddItem} className="bg-gray-200 px-4 py-2 rounded font-bold text-gray-700 hover:bg-gray-300">Add</button>
               </div>
