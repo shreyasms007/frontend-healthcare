@@ -1,56 +1,72 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
+import { API_BASE } from '../config.js';
 
 export default function Inventory() {
-  const [inventory, setInventory] = useState([])
+  const [inventoryList, setInventoryList] = useState([]);
 
   useEffect(() => {
-    fetchInventory()
-  }, [])
-
-  const fetchInventory = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/inventory`)
-      const data = await res.json()
-      setInventory(data || [])
-    } catch (err) { console.error(err) }
-  }
+    const fetchInventory = async () => {
+      try {
+        // Adjust this endpoint if your backend uses a different path for live inventory
+        const res = await fetch(`${API_BASE}/api/inventory`); 
+        const data = await res.json();
+        
+        // Ensure we always set an array to avoid mapping errors
+        setInventoryList(data || []);
+      } catch (error) {
+        console.error('Error fetching inventory:', error);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-hospital-navy text-white">
-        <h3 className="font-bold">Live Inventory Stock Levels</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-left">
-          <thead className="bg-gray-100 text-gray-700 border-b border-gray-200">
-            <tr>
-              <th className="py-3 px-6 font-medium">Medicine Name</th>
-              <th className="py-3 px-6 font-medium">Batch Number</th>
-              <th className="py-3 px-6 font-medium">Available Quantity</th>
-              <th className="py-3 px-6 font-medium">Sale Price</th>
-              <th className="py-3 px-6 font-medium">Expiry Date</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 text-gray-700">
-            {inventory.map((inv, index) => (
-              <tr key={index} className="hover:bg-blue-50 transition-colors">
-                <td className="py-3 px-6 font-medium text-hospital-navy">{inv.medicine_name}</td>
-                <td className="py-3 px-6">{inv.batch_number}</td>
-                <td className="py-3 px-6">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${inv.stock_qty > 10 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {inv.stock_qty} units
-                  </span>
-                </td>
-                <td className="py-3 px-6 font-medium">₹{inv.sale_rate?.toFixed(2)}</td>
-                <td className="py-3 px-6">{inv.expiry_date?.split('T')[0]}</td>
+    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+      <div className="bg-white rounded-lg shadow border border-gray-200">
+        
+        <div className="bg-hospital-navy text-white px-6 py-3 rounded-t-lg font-bold">
+          <h1 className="text-xl uppercase tracking-wide m-0">Live Inventory Stock Levels</h1>
+        </div>
+
+        <div className="p-6 overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead className="bg-gray-100 text-hospital-navy border-b-2 border-gray-300">
+              <tr>
+                <th className="p-3 font-bold">Medicine Name</th>
+                <th className="p-3 font-bold">Batch Number</th>
+                <th className="p-3 font-bold">Available Quantity</th>
+                <th className="p-3 font-bold">Sale Price</th>
+                <th className="p-3 font-bold">Expiry Date</th>
               </tr>
-            ))}
-            {inventory.length === 0 && (
-              <tr><td colSpan="5" className="py-8 text-center text-gray-500">Inventory is empty. Record a purchase invoice to stock items.</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {inventoryList.map((item, index) => (
+                <tr key={index} className="border-b hover:bg-teal-50 transition-colors">
+                  {/* Matching the exact JSON keys from your network tab */}
+                  <td className="p-3 font-bold text-hospital-navy">{item.medicine_name}</td>
+                  <td className="p-3">{item.batch_number}</td>
+                  <td className="p-3">
+                    <span className="bg-teal-100 text-teal-800 px-2 py-1 rounded font-bold">
+                      {item.stock_qty}
+                    </span>
+                  </td>
+                  <td className="p-3">₹{item.sale_rate}</td>
+                  <td className="p-3">{item.expiry_date}</td>
+                </tr>
+              ))}
+              
+              {inventoryList.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="p-8 text-center text-gray-500 font-semibold">
+                    Inventory is empty. Record a purchase invoice to stock items.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
       </div>
     </div>
-  )
+  );
 }
