@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ACCOUNT_DATABASE } from '../data/accountDatabase.js'; 
-// ADDED: Import your API base URL
 import { API_BASE } from '../config.js'; 
 
 export default function AccountMaster() {
+  const navigate = useNavigate();
+  
   const initialState = {
     code: 'NEW',
     name: '',
@@ -63,7 +65,6 @@ export default function AccountMaster() {
     }
   };
 
-  // ADDED: The function to handle saving data to the backend
   const handleSubmit = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/suppliers`, { 
@@ -88,10 +89,18 @@ export default function AccountMaster() {
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
       <div className="bg-white rounded-lg shadow border border-gray-200">
         
-        {/* Header */}
-        <div className="bg-hospital-navy text-white px-6 py-3 rounded-t-lg font-bold flex justify-between items-center">
-          <span>Account Master — New / Modify</span>
-          <button className="bg-teal-500 hover:bg-teal-600 px-3 py-1 rounded text-sm transition shadow-sm">
+        {/* Header with Navigation Button side-by-side */}
+        <div className="bg-hospital-navy text-white px-6 py-3 rounded-t-lg flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold uppercase tracking-wide m-0">Account Master</h1>
+            <button 
+              onClick={() => navigate('/suppliers-list')}
+              className="bg-teal-500 hover:bg-teal-600 text-white text-sm font-bold py-1.5 px-4 rounded-md shadow-sm transition-colors"
+            >
+              View Suppliers List
+            </button>
+          </div>
+          <button className="bg-teal-600 hover:bg-teal-700 px-3 py-1 rounded text-sm font-bold transition shadow-sm border border-teal-500">
             GST Update Utility Enabled
           </button>
         </div>
@@ -104,13 +113,7 @@ export default function AccountMaster() {
               <div className="mb-4">
                 <label className="block text-sm text-gray-600 mb-1 font-semibold">A/c Code</label>
                 <div className="flex gap-4 items-center">
-                  <input 
-                    type="text" 
-                    name="code"
-                    value={formData.code} 
-                    onChange={handleInputChange}
-                    className="border p-2 rounded w-1/3 focus:ring-1 focus:ring-teal-500 outline-none" 
-                  />
+                  <input type="text" name="code" value={formData.code} onChange={handleInputChange} className="border p-2 rounded w-1/3 focus:ring-1 focus:ring-teal-500 outline-none" />
                   <label className="flex items-center gap-1 text-sm"><input type="checkbox" /> Lock</label>
                   <label className="flex items-center gap-1 text-sm text-red-600"><input type="checkbox" /> Inactive</label>
                 </div>
@@ -118,15 +121,7 @@ export default function AccountMaster() {
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1 font-semibold">A/c Name (Company / Distributor) *</label>
-                <input 
-                  type="text" 
-                  name="name"
-                  value={formData.name}
-                  onChange={handleNameChange}
-                  list="account-suggestions"
-                  autoComplete="off"
-                  className="border p-2 rounded w-full border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none shadow-sm" 
-                />
+                <input type="text" name="name" value={formData.name} onChange={handleNameChange} list="account-suggestions" autoComplete="off" className="border p-2 rounded w-full border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none shadow-sm" />
                 <datalist id="account-suggestions">
                   {ACCOUNT_DATABASE.map((acc, index) => (
                     <option key={index} value={acc.name} />
@@ -145,46 +140,22 @@ export default function AccountMaster() {
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1 font-semibold">A/c Bank</label>
-                  <input 
-                    type="text" 
-                    name="acBank"
-                    value={formData.acBank} 
-                    onChange={handleInputChange}
-                    className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                  />
+                  <input type="text" name="acBank" value={formData.acBank} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1 font-semibold">A/c No.</label>
-                  <input 
-                    type="text" 
-                    name="acNumber"
-                    value={formData.acNumber} 
-                    onChange={handleInputChange}
-                    className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                  />
+                  <input type="text" name="acNumber" value={formData.acNumber} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-600 mb-1 font-semibold">IFSC Code</label>
-                  <input 
-                    type="text" 
-                    name="ifscCode"
-                    value={formData.ifscCode} 
-                    onChange={handleInputChange}
-                    className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                  />
+                  <input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1 font-semibold">MICR</label>
-                  <input 
-                    type="text" 
-                    name="micr"
-                    value={formData.micr} 
-                    onChange={handleInputChange}
-                    className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                  />
+                  <input type="text" name="micr" value={formData.micr} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
                 </div>
               </div>
             </div>
@@ -199,13 +170,7 @@ export default function AccountMaster() {
                   </div>
                   <div>
                     <label className="block text-sm text-gray-600 mb-1 font-semibold">PAN No</label>
-                    <input 
-                      type="text" 
-                      name="panNo"
-                      value={formData.panNo} 
-                      onChange={handleInputChange}
-                      className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                    />
+                    <input type="text" name="panNo" value={formData.panNo} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
                   </div>
                </div>
                
@@ -241,42 +206,23 @@ export default function AccountMaster() {
                     <input type="text" name="debitLimit" value={formData.debitLimit} onChange={handleInputChange} className="border p-2 rounded w-full" />
                 </div>
             </div>
-
           </div>
 
           {/* RIGHT COLUMN */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm text-gray-600 mb-1 font-semibold">Full Address</label>
-              <input 
-                type="text" 
-                name="fullAddress"
-                value={formData.fullAddress} 
-                onChange={handleInputChange}
-                className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-              />
+              <input type="text" name="fullAddress" value={formData.fullAddress} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1 font-semibold">City</label>
-                <input 
-                  type="text" 
-                  name="city"
-                  value={formData.city} 
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                />
+                <input type="text" name="city" value={formData.city} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1 font-semibold">Pin Code</label>
-                <input 
-                  type="text" 
-                  name="pinCode"
-                  value={formData.pinCode} 
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" 
-                />
+                <input type="text" name="pinCode" value={formData.pinCode} onChange={handleInputChange} className="border p-2 rounded w-full focus:ring-1 focus:ring-teal-500 outline-none" />
               </div>
             </div>
 
@@ -310,13 +256,7 @@ export default function AccountMaster() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-teal-700 mb-1">GSTN (15-Digit)</label>
-                  <input 
-                    type="text" 
-                    name="gstnNo"
-                    value={formData.gstnNo} 
-                    onChange={handleInputChange}
-                    className="border p-2 rounded w-full uppercase focus:ring-1 focus:ring-teal-500 outline-none" 
-                  />
+                  <input type="text" name="gstnNo" value={formData.gstnNo} onChange={handleInputChange} className="border p-2 rounded w-full uppercase focus:ring-1 focus:ring-teal-500 outline-none" />
                 </div>
                 <div>
                   <label className="block text-sm text-gray-600 mb-1 font-semibold">GST Type</label>
@@ -350,7 +290,6 @@ export default function AccountMaster() {
             </div>
             
             <div className="flex justify-end pt-4">
-               {/* ADDED: onClick={handleSubmit} to trigger the function */}
                <button onClick={handleSubmit} className="bg-teal-600 text-white px-6 py-2 rounded font-bold hover:bg-teal-700 transition shadow">
                   F10 — Save Account Master
                </button>
@@ -358,47 +297,6 @@ export default function AccountMaster() {
             
           </div>
         </div>
-        
-        {/* Table Mockup based on screenshot */}
-        <div className="p-6 border-t mt-4">
-           <div className="bg-gray-50 p-4 rounded border">
-              <h3 className="font-bold text-gray-700 mb-4">Registered Accounts Directory</h3>
-              <table className="w-full text-left text-sm border-collapse">
-                 <thead className="bg-hospital-navy text-white">
-                    <tr>
-                       <th className="p-2">Code</th>
-                       <th className="p-2">Company Name</th>
-                       <th className="p-2">DL/TL No. 1</th>
-                       <th className="p-2">GSTN</th>
-                       <th className="p-2">Phone</th>
-                       <th className="p-2">City</th>
-                       <th className="p-2 text-center">Mode</th>
-                    </tr>
-                 </thead>
-                 <tbody>
-                    <tr className="border-b">
-                       <td className="p-2">RAJASTAN</td>
-                       <td className="p-2 font-bold text-hospital-navy">RAJASTHAN PHARMACY</td>
-                       <td className="p-2">FSDKHBFSD5161616</td>
-                       <td className="p-2">BFJEBFJEWBF516565156</td>
-                       <td className="p-2">616656515621</td>
-                       <td className="p-2">HASSAN</td>
-                       <td className="p-2 text-center"><span className="text-teal-600 border border-teal-200 px-2 py-0.5 rounded text-xs bg-teal-50">Cash</span></td>
-                    </tr>
-                    <tr className="border-b">
-                       <td className="p-2">657YF</td>
-                       <td className="p-2 font-bold text-hospital-navy">SJS medicals</td>
-                       <td className="p-2">F32R3</td>
-                       <td className="p-2">QWE1</td>
-                       <td className="p-2">QE12RG</td>
-                       <td className="p-2">ARASIKERE</td>
-                       <td className="p-2 text-center"><span className="text-teal-600 border border-teal-200 px-2 py-0.5 rounded text-xs bg-teal-50">Cash</span></td>
-                    </tr>
-                 </tbody>
-              </table>
-           </div>
-        </div>
-
       </div>
     </div>
   );
