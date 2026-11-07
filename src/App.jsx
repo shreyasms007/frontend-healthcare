@@ -14,7 +14,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<DashboardLayout />}>
-          <Route path="medicines" element={<MedicineMaster />} />
+          <Route index element={<MedicineMaster />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="suppliers-list" element={<SuppliersList />} /> 
           <Route path="price-master" element={<PriceMaster />} />
