@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE } from '../config.js';
 
 export default function PurchaseInvoices() {
   const [purchases, setPurchases] = useState([])
@@ -38,7 +39,7 @@ export default function PurchaseInvoices() {
 
   const fetchPurchases = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/purchases')
+      const res = await fetch(`${API_BASE}/api/purchases`)
       const data = await res.json()
       setPurchases(data || [])
     } catch (err) { console.error(err) }
@@ -46,7 +47,7 @@ export default function PurchaseInvoices() {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/suppliers')
+     const res = await fetch(`${API_BASE}/api/suppliers`)
       const data = await res.json()
       setSuppliers(data || [])
     } catch (err) { console.error(err) }
@@ -54,7 +55,7 @@ export default function PurchaseInvoices() {
 
   const fetchMedicines = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/medicines')
+     const res = await fetch(`${API_BASE}/api/medicines`)
       const data = await res.json()
       setMedicines(data || [])
     } catch (err) { console.error(err) }
@@ -134,7 +135,7 @@ export default function PurchaseInvoices() {
     }
 
     try {
-      const res = await fetch('http://localhost:8081/api/purchases', {
+     const res = await fetch(`${API_BASE}/api/purchases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

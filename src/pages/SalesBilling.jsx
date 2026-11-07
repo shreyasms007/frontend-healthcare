@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { API_BASE } from '../config.js';
 
 export default function SalesBilling() {
   const emptyForm = {
@@ -32,7 +33,7 @@ export default function SalesBilling() {
 
   const fetchSales = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/sales')
+      const res = await fetch(`${API_BASE}/api/sales`)
       if (res.ok) {
         const data = await res.json()
         setSales(Array.isArray(data) ? data : (data.data || []))
@@ -42,7 +43,7 @@ export default function SalesBilling() {
 
   const fetchInventory = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/inventory')
+     const res = await fetch(`${API_BASE}/api/inventory`)
       if (res.ok) {
         const data = await res.json()
         let arr = []

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE } from '../config.js';
 
 export default function PriceMaster() {
   const [batches, setBatches] = useState([])
@@ -8,7 +9,7 @@ export default function PriceMaster() {
 
   const fetchBatches = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/price-master')
+      const res = await fetch(`${API_BASE}/api/price-master`)
       const data = await res.json()
       setBatches(data || [])
       if (data && data.length > 0 && !selectedBatch) {
@@ -70,7 +71,7 @@ export default function PriceMaster() {
     }
 
     try {
-      const res = await fetch('http://localhost:8081/api/price-master', {
+     const res = await fetch(`${API_BASE}/api/price-master`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

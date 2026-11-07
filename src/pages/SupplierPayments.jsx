@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE } from '../config.js';
 
 export default function SupplierPayments() {
   const [suppliers, setSuppliers] = useState([])
@@ -27,7 +28,7 @@ export default function SupplierPayments() {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/suppliers')
+      const res = await fetch(`${API_BASE}/api/suppliers`)
       const data = await res.json()
       setSuppliers(data || [])
     } catch (err) { console.error(err) }
@@ -87,7 +88,7 @@ export default function SupplierPayments() {
     }
 
     try {
-      const res = await fetch('http://localhost:8081/api/supplier-payments', {
+     const res = await fetch(`${API_BASE}/api/supplier-payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { MEDICINE_DATABASE, DEFAULT_GROUPS, DEFAULT_SCHEDULES } from '../data/medicineDatabase'
+import { API_BASE } from '../config.js';
 
 export default function MedicineMaster() {
   const emptyForm = {
@@ -39,7 +40,7 @@ export default function MedicineMaster() {
 
   const fetchMedicines = async () => {
     try {
-      const res = await fetch('http://localhost:8081/api/medicines')
+      const res = await fetch(`${API_BASE}/api/medicines`)
       if (res.ok) {
         const data = await res.json()
         setMedicines(data || [])
@@ -187,7 +188,7 @@ export default function MedicineMaster() {
     const method = isEditing ? 'PUT' : 'POST'
 
     try {
-      const res = await fetch('http://localhost:8081/api/medicines', {
+     const res = await fetch(`${API_BASE}/api/medicines`, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
