@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-// Fixed import path with .js extension for Vite
 import { ACCOUNT_DATABASE } from '../data/accountDatabase.js'; 
+// ADDED: Import your API base URL
+import { API_BASE } from '../config.js'; 
 
 export default function AccountMaster() {
   const initialState = {
@@ -34,23 +35,18 @@ export default function AccountMaster() {
 
   const [formData, setFormData] = useState(initialState);
 
-  // Generic handler for normal typing
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Auto-fill logic when A/c Name changes
   const handleNameChange = (e) => {
     const selectedName = e.target.value;
-    
-    // Look for a matching account in the database array
     const matchedAccount = ACCOUNT_DATABASE.find(
       (acc) => acc.name.toLowerCase() === selectedName.toLowerCase()
     );
 
     if (matchedAccount) {
-      // If found, auto-fill all corresponding fields
       setFormData((prev) => ({
         ...prev,
         name: matchedAccount.name,
@@ -63,8 +59,29 @@ export default function AccountMaster() {
         gstnNo: matchedAccount.gstnNo || '29AAAAA0000A1Z5'
       }));
     } else {
-      // If no match, just update the name field normally
       setFormData((prev) => ({ ...prev, name: selectedName }));
+    }
+  };
+
+  // ADDED: The function to handle saving data to the backend
+  const handleSubmit = async () => {
+    try {
+      // Adjust '/api/suppliers' if your Go backend uses a different endpoint for accounts
+      const res = await fetch(`${API_BASE}/api/suppliers`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (res.ok) {
+        alert('Account Master saved successfully!');
+        setFormData(initialState); // Clear form after save
+      } else {
+        alert('Failed to save account. Please check the backend connection.');
+      }
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Network error occurred.');
     }
   };
 
@@ -102,7 +119,6 @@ export default function AccountMaster() {
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1 font-semibold">A/c Name (Company / Distributor) *</label>
-                {/* NEW CODE: Auto-suggestion input logic */}
                 <input 
                   type="text" 
                   name="name"
@@ -117,7 +133,6 @@ export default function AccountMaster() {
                     <option key={index} value={acc.name} />
                   ))}
                 </datalist>
-                {/* END NEW CODE */}
               </div>
             </div>
 
@@ -336,7 +351,8 @@ export default function AccountMaster() {
             </div>
             
             <div className="flex justify-end pt-4">
-               <button className="bg-teal-600 text-white px-6 py-2 rounded font-bold hover:bg-teal-700 transition shadow">
+               {/* ADDED: onClick={handleSubmit} to trigger the function */}
+               <button onClick={handleSubmit} className="bg-teal-600 text-white px-6 py-2 rounded font-bold hover:bg-teal-700 transition shadow">
                   F10 — Save Account Master
                </button>
             </div>
