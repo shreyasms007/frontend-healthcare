@@ -16,6 +16,8 @@ export default function SalesBilling() {
 
   const [activeView, setActiveView] = useState('create')
   const [formData, setFormData] = useState({ ...emptyForm })
+  // NEW: State to hold the original snapshot of items when editing a parked bill
+  const [originalItems, setOriginalItems] = useState([])
   const [sales, setSales] = useState([])
   const [inventory, setInventory] = useState([]) 
   
@@ -26,7 +28,6 @@ export default function SalesBilling() {
 
   const safeItems = Array.isArray(formData.items) ? formData.items : []
 
-  // Load Draft from LocalStorage on Mount
   useEffect(() => {
     const draft = localStorage.getItem('salesBillDraft');
     if (draft) {
@@ -43,7 +44,6 @@ export default function SalesBilling() {
     fetchInventory()
   }, [])
 
-  // Auto-save Draft to LocalStorage on Change
   useEffect(() => {
     if (formData.id === null && (formData.phone_number !== '' || safeItems.length > 0)) {
       localStorage.setItem('salesBillDraft', JSON.stringify(formData));
@@ -112,6 +112,7 @@ export default function SalesBilling() {
         phone_number: phone,
         customer_name: pastSale ? pastSale.customer_name : ''
       }))
+      setOriginalItems([]) // Clear snapshot on new customer
       setActiveView('create')
     }
   }
@@ -160,7 +161,6 @@ export default function SalesBilling() {
   }
 
   const handleAddItem = () => {
-    // 1. Validate Medicine
     const isValidMedicine = uniqueMedicines.includes(currentItem.medicine_id);
     if (!isValidMedicine) {
       alert("⚠️ Invalid Item: You must select a valid medicine from the dropdown list.");
@@ -177,31 +177,33 @@ export default function SalesBilling() {
       String(inv.id) === String(currentItem.batch_id)
     );
 
-    // 2. Check if this exact medicine & batch is ALREADY in the bill
     const existingItemIndex = safeItems.findIndex(item => 
       String(item.batch_id) === String(currentItem.batch_id) && 
       String(item.medicine_id) === String(currentItem.medicine_id)
     );
 
+    // Calculate True Available Stock (DB Stock + Original snapshot Qty)
+    const originalQty = originalItems
+      .filter(item => String(item.batch_id) === String(currentItem.batch_id))
+      .reduce((sum, item) => sum + Number(item.qty), 0);
+
+    const rawStock = selectedInv ? Number(selectedInv.stock_qty || selectedInv.available_stock || 0) : 0;
+    const trueAvailableStock = rawStock + originalQty;
+
     const currentCartQty = existingItemIndex >= 0 ? Number(safeItems[existingItemIndex].qty) : 0;
     const totalRequestedQty = currentCartQty + Number(currentItem.qty);
-    const availableStock = selectedInv ? Number(selectedInv.stock_qty || selectedInv.available_stock || 0) : 0;
 
-    // 3. Strict Stock Validation
-    if (selectedInv && totalRequestedQty > availableStock) {
-      alert(`⚠️ Insufficient Stock! You already have ${currentCartQty} in the bill. Only ${availableStock} total available.`);
+    if (selectedInv && totalRequestedQty > trueAvailableStock) {
+      alert(`⚠️ Insufficient Stock! You are requesting ${totalRequestedQty} total, but only ${trueAvailableStock} is available.`);
       return;
     }
 
-    // 4. Smart Add / Merge
     if (existingItemIndex >= 0) {
-       // Merge: Update the existing row's quantity and amount
        const updatedItems = [...safeItems];
        updatedItems[existingItemIndex].qty = totalRequestedQty;
        updatedItems[existingItemIndex].amount = totalRequestedQty * Number(currentItem.rate);
        setFormData(prev => ({ ...prev, items: updatedItems }));
     } else {
-       // Add: Create a brand new row
        if (!currentItem.medicine_id || currentItem.qty <= 0) return;
        setFormData(prev => ({
          ...prev,
@@ -238,7 +240,6 @@ export default function SalesBilling() {
          (String(inv.batch_number) === String(currentItem.batch_id) || String(inv.batch_id) === String(currentItem.batch_id) || String(inv.id) === String(currentItem.batch_id))
       );
       if (isValid) {
-        // Just push pending input for save (doesn't trigger merge visually, but saves correctly)
         itemsToSave.push({
           ...currentItem,
           amount: currentItem.qty * currentItem.rate
@@ -275,6 +276,7 @@ export default function SalesBilling() {
             alert('Bill saved as Open (Unissued).')
             setActiveView('list') 
         }
+        setOriginalItems([]) // Clear snapshot on success
         return true
       } else {
         alert('Failed to save sale: ' + await res.text())
@@ -311,7 +313,6 @@ export default function SalesBilling() {
       const saveSuccess = await handleSave(true);
       if (!saveSuccess) return;
 
-      // 1. Initialize strictly as A5 Size
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
       
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -319,14 +320,10 @@ export default function SalesBilling() {
       const rightMarginX = pageWidth - 10; 
       const col2X = pageWidth - 55;        
       
-      // ==========================================
-      // 🏥 INVOICE TEMPLATE DETAILS
-      // ==========================================
       const hospitalName = "JENUKAL PHARMACY (A Unit of Jenukal Hospital)";
       const addressLine = "OPP GOVT HOSPITAL, DARGA COMPLEX, ARASIKERE, Karnataka - 573103";
       const contactInfo = "Ph: 08174-234400, 7996779835";
       const legalInfo = "GST No: 29AJTPR8514J1ZA  |  DL.No: KA-HS1-145811, KA-HS1-145812";
-      // ==========================================
 
       const totalAmt = calculateTotal(itemsToPrint);
       const roundedTotal = Math.round(totalAmt);
@@ -404,7 +401,6 @@ export default function SalesBilling() {
         }
       });
 
-      // 2. FORCE DOWNLOAD: Bypass browser extensions by using a raw Blob URL
       const pdfBlob = doc.output('blob');
       const blobUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement('a');
@@ -417,6 +413,7 @@ export default function SalesBilling() {
       
       localStorage.removeItem('salesBillDraft'); 
       setFormData({ ...emptyForm })
+      setOriginalItems([])
       setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 })
       setActiveView('list')
       
@@ -427,6 +424,7 @@ export default function SalesBilling() {
   }
 
   const openEditView = (sale) => {
+    const loadedItems = Array.isArray(sale.items) ? sale.items : [];
     setFormData({
       id: sale.id,
       phone_number: sale.phone_number || '',
@@ -434,8 +432,10 @@ export default function SalesBilling() {
       doctor_name: sale.doctor_name || '',
       invoice_date: sale.invoice_date || '',
       is_issued: sale.is_issued || false,
-      items: Array.isArray(sale.items) ? sale.items : [] 
+      items: loadedItems 
     })
+    // Save snapshot to reverse the frontend math during edit mode
+    setOriginalItems(JSON.parse(JSON.stringify(loadedItems)))
     setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 })
     setActiveView('edit')
   }
@@ -449,6 +449,7 @@ export default function SalesBilling() {
               onClick={() => { 
                 localStorage.removeItem('salesBillDraft'); 
                 setFormData({ ...emptyForm }); 
+                setOriginalItems([]);
                 setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 }); 
                 setActiveView('create'); 
               }}
@@ -545,7 +546,6 @@ export default function SalesBilling() {
                   </datalist>
                 </div>
                 
-                {/* Dynamic Batch Dropdown with Live Math */}
                 <div className="w-48">
                   <label className="block text-xs text-gray-500 mb-1">Batch ID</label>
                   <select 
@@ -557,12 +557,17 @@ export default function SalesBilling() {
                     {availableBatches.map((b, idx) => {
                       const batchId = b.batch_number || b.batch_id || b.id;
                       
+                      // MATH FIX: Calculate true stock using original snapshot
+                      const originalQty = originalItems
+                        .filter(item => String(item.batch_id) === String(batchId))
+                        .reduce((sum, item) => sum + Number(item.qty), 0);
+                      
                       const inCart = safeItems
                         .filter(item => String(item.batch_id) === String(batchId))
                         .reduce((sum, item) => sum + Number(item.qty), 0);
                         
                       const rawStock = Number(b.stock_qty || b.available_stock || 0);
-                      const displayStock = rawStock - inCart; 
+                      const displayStock = (rawStock + originalQty) - inCart; 
 
                       return (
                         <option key={idx} value={batchId}>
