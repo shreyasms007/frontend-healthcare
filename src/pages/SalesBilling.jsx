@@ -26,13 +26,12 @@ export default function SalesBilling() {
 
   const safeItems = Array.isArray(formData.items) ? formData.items : []
 
-  // --- NEW FIX 3: Load Draft from LocalStorage on Mount ---
+  // Load Draft from LocalStorage on Mount
   useEffect(() => {
     const draft = localStorage.getItem('salesBillDraft');
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
-        // Only load draft if it's a new bill (id is null)
         if (parsed && parsed.id === null) {
           setFormData(parsed);
         }
@@ -44,13 +43,12 @@ export default function SalesBilling() {
     fetchInventory()
   }, [])
 
-  // --- NEW FIX 3: Auto-save Draft to LocalStorage on Change ---
+  // Auto-save Draft to LocalStorage on Change
   useEffect(() => {
-    // We only draft New Bills to prevent overriding edited past bills
     if (formData.id === null && (formData.phone_number !== '' || safeItems.length > 0)) {
       localStorage.setItem('salesBillDraft', JSON.stringify(formData));
     }
-  }, [formData])
+  }, [formData, safeItems])
 
   const fetchSales = async () => {
     try {
@@ -88,13 +86,11 @@ export default function SalesBilling() {
     return Array.from(new Set(sales.filter(s => s.phone_number).map(s => s.phone_number)))
   }, [sales])
 
-  // --- NEW FIX 2: Get Unique Medicines for Dropdown to prevent duplicates ---
   const uniqueMedicines = useMemo(() => {
     const names = inventory.map(inv => inv.medicine_name || inv.item_name || inv.name).filter(Boolean);
     return Array.from(new Set(names));
   }, [inventory])
 
-  // --- NEW FIX 2: Filter available batches for the currently typed medicine ---
   const availableBatches = useMemo(() => {
     return inventory.filter(inv => 
       (inv.medicine_name === currentItem.medicine_id) || 
@@ -102,7 +98,6 @@ export default function SalesBilling() {
       (inv.name === currentItem.medicine_id)
     );
   }, [inventory, currentItem.medicine_id])
-
 
   const handlePhoneChange = (e) => {
     const phone = e.target.value
@@ -126,7 +121,6 @@ export default function SalesBilling() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  // --- NEW FIX 1 & 2: Handle Medicine Change & Auto-select Single Batches ---
   const handleMedicineChange = (e) => {
     const val = e.target.value
     const batches = inventory.filter(inv => 
@@ -138,7 +132,6 @@ export default function SalesBilling() {
     let defaultBatch = ''
     let defaultRate = 0
 
-    // If medicine has exactly 1 batch, select it automatically
     if (batches.length === 1) {
        defaultBatch = batches[0].batch_number || batches[0].batch_id || batches[0].id || ''
        defaultRate = batches[0].sale_rate || batches[0].rate || batches[0].mrp || batches[0].price || 0
@@ -147,17 +140,16 @@ export default function SalesBilling() {
     setCurrentItem(prev => ({
       ...prev,
       medicine_id: val,
-      batch_id: defaultBatch, // Reset or Auto-fill batch
-      rate: defaultRate,      // Reset or Auto-fill rate
+      batch_id: defaultBatch, 
+      rate: defaultRate,      
       qty: 1
     }))
   }
 
-  // --- NEW FIX 2: Handle Batch Dropdown Change & Auto-fill Rate ---
   const handleBatchChange = (e) => {
     const bId = e.target.value;
     const selectedBatch = availableBatches.find(inv => 
-      (inv.batch_number == bId) || (inv.batch_id == bId) || (inv.id == bId)
+      String(inv.batch_number) === String(bId) || String(inv.batch_id) === String(bId) || String(inv.id) === String(bId)
     );
 
     setCurrentItem(prev => ({
@@ -168,40 +160,56 @@ export default function SalesBilling() {
   }
 
   const handleAddItem = () => {
-    // --- NEW FIX 1: Strict Inventory & Batch Validation ---
+    // 1. Validate Medicine
     const isValidMedicine = uniqueMedicines.includes(currentItem.medicine_id);
     if (!isValidMedicine) {
       alert("⚠️ Invalid Item: You must select a valid medicine from the dropdown list.");
       return; 
     }
-    
     if (!currentItem.batch_id || currentItem.batch_id === "") {
       alert("⚠️ Please select a valid Batch from the dropdown for this medicine.");
       return; 
     }
 
     const selectedInv = availableBatches.find(inv => 
-      (inv.batch_number == currentItem.batch_id) || (inv.batch_id == currentItem.batch_id) || (inv.id == currentItem.batch_id)
+      String(inv.batch_number) === String(currentItem.batch_id) || 
+      String(inv.batch_id) === String(currentItem.batch_id) || 
+      String(inv.id) === String(currentItem.batch_id)
     );
-    
-    const alreadyInCart = safeItems
-      .filter(item => item.batch_id == currentItem.batch_id)
-      .reduce((sum, item) => sum + Number(item.qty), 0);
 
-    const totalRequestedQty = currentItem.qty + alreadyInCart;
-    const availableStock = selectedInv ? (selectedInv.stock_qty || selectedInv.available_stock || 0) : 0;
+    // 2. Check if this exact medicine & batch is ALREADY in the bill
+    const existingItemIndex = safeItems.findIndex(item => 
+      String(item.batch_id) === String(currentItem.batch_id) && 
+      String(item.medicine_id) === String(currentItem.medicine_id)
+    );
 
+    const currentCartQty = existingItemIndex >= 0 ? Number(safeItems[existingItemIndex].qty) : 0;
+    const totalRequestedQty = currentCartQty + Number(currentItem.qty);
+    const availableStock = selectedInv ? Number(selectedInv.stock_qty || selectedInv.available_stock || 0) : 0;
+
+    // 3. Strict Stock Validation
     if (selectedInv && totalRequestedQty > availableStock) {
-      alert(`⚠️ Insufficient Stock! You already have ${alreadyInCart} of this batch in the bill. You only have ${availableStock} total available.`);
+      alert(`⚠️ Insufficient Stock! You already have ${currentCartQty} in the bill. Only ${availableStock} total available.`);
       return;
     }
 
-    if (!currentItem.medicine_id || currentItem.qty <= 0) return
-    setFormData(prev => ({
-      ...prev,
-      items: [...safeItems, { ...currentItem, amount: currentItem.qty * currentItem.rate }]
-    }))
-    setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 })
+    // 4. Smart Add / Merge
+    if (existingItemIndex >= 0) {
+       // Merge: Update the existing row's quantity and amount
+       const updatedItems = [...safeItems];
+       updatedItems[existingItemIndex].qty = totalRequestedQty;
+       updatedItems[existingItemIndex].amount = totalRequestedQty * Number(currentItem.rate);
+       setFormData(prev => ({ ...prev, items: updatedItems }));
+    } else {
+       // Add: Create a brand new row
+       if (!currentItem.medicine_id || currentItem.qty <= 0) return;
+       setFormData(prev => ({
+         ...prev,
+         items: [...safeItems, { ...currentItem, amount: Number(currentItem.qty) * Number(currentItem.rate) }]
+       }));
+    }
+    
+    setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 });
   }
 
   const handleRemoveItem = (index) => {
@@ -224,13 +232,13 @@ export default function SalesBilling() {
 
     let itemsToSave = [...safeItems]
     
-    // --- NEW FIX 1: Strict Validation for Pending Inputs ---
     if (currentItem.medicine_id && currentItem.qty > 0) {
       const isValid = inventory.some(inv => 
          (inv.medicine_name === currentItem.medicine_id || inv.name === currentItem.medicine_id || inv.item_name === currentItem.medicine_id) && 
-         (inv.batch_number == currentItem.batch_id || inv.batch_id == currentItem.batch_id || inv.id == currentItem.batch_id)
+         (String(inv.batch_number) === String(currentItem.batch_id) || String(inv.batch_id) === String(currentItem.batch_id) || String(inv.id) === String(currentItem.batch_id))
       );
       if (isValid) {
+        // Just push pending input for save (doesn't trigger merge visually, but saves correctly)
         itemsToSave.push({
           ...currentItem,
           amount: currentItem.qty * currentItem.rate
@@ -261,7 +269,7 @@ export default function SalesBilling() {
       })
 
       if (res.ok) {
-        localStorage.removeItem('salesBillDraft'); // Clear Draft on Success
+        localStorage.removeItem('salesBillDraft'); 
         fetchSales()
         if (!isIssuedFlag) {
             alert('Bill saved as Open (Unissued).')
@@ -278,15 +286,14 @@ export default function SalesBilling() {
     }
   }
 
- const handlePrint = async () => {
+  const handlePrint = async () => {
     try {
       let itemsToPrint = [...safeItems]
       
-      // Strict Validation for Pending Inputs
       if (currentItem.medicine_id && currentItem.qty > 0) {
         const isValid = inventory.some(inv => 
            (inv.medicine_name === currentItem.medicine_id || inv.name === currentItem.medicine_id || inv.item_name === currentItem.medicine_id) && 
-           (inv.batch_number == currentItem.batch_id || inv.batch_id == currentItem.batch_id || inv.id == currentItem.batch_id)
+           (String(inv.batch_number) === String(currentItem.batch_id) || String(inv.batch_id) === String(currentItem.batch_id) || String(inv.id) === String(currentItem.batch_id))
         );
         if (isValid) {
           itemsToPrint.push({
@@ -301,18 +308,16 @@ export default function SalesBilling() {
         return;
       }
 
-      // Save the bill to the database before printing
       const saveSuccess = await handleSave(true);
       if (!saveSuccess) return;
 
       // 1. Initialize strictly as A5 Size
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
       
-      // Calculate dynamic widths for A5 (Width: 148.5mm, Height: 210mm)
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      const rightMarginX = pageWidth - 10; // Right edge for lines and page numbers
-      const col2X = pageWidth - 55;        // Left alignment for the second column (Bill No, Totals)
+      const rightMarginX = pageWidth - 10; 
+      const col2X = pageWidth - 55;        
       
       // ==========================================
       // 🏥 INVOICE TEMPLATE DETAILS
@@ -327,9 +332,7 @@ export default function SalesBilling() {
       const roundedTotal = Math.round(totalAmt);
       const totalQty = itemsToPrint.reduce((sum, item) => sum + Number(item.qty || 0), 0);
 
-      // Helper function to draw Header on EVERY page
       const printHeader = (data) => {
-        // Adjusted font sizes to fit A5
         doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
         doc.setTextColor(0, 0, 0); 
@@ -345,7 +348,6 @@ export default function SalesBilling() {
         doc.setLineWidth(0.5);
         doc.line(14, 36, rightMarginX, 36);
         
-        // Patient & Invoice Info
         doc.setFontSize(9);
         doc.text(`Patient: ${formData.customer_name || 'Cash Customer'}`, 14, 42);
         doc.text(`Phone: ${formData.phone_number || '-'}`, 14, 47);
@@ -369,7 +371,6 @@ export default function SalesBilling() {
         Number(item.amount || 0).toFixed(2)
       ]);
 
-      // Generate AutoTable
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
@@ -390,7 +391,6 @@ export default function SalesBilling() {
           doc.text(`Sub Total: Rs ${totalAmt.toFixed(2)}`, col2X, pageHeight - 28);
           
           doc.setFontSize(12);
-          // Shifted slightly left to accommodate larger font on narrow A5 width
           doc.text(`Rounded Total: Rs ${roundedTotal}.00`, col2X - 5, pageHeight - 20);
           
           doc.setFontSize(7);
@@ -545,7 +545,7 @@ export default function SalesBilling() {
                   </datalist>
                 </div>
                 
-                {/* --- NEW FIX 2: Batch ID is now a Dynamic Select Dropdown --- */}
+                {/* Dynamic Batch Dropdown with Live Math */}
                 <div className="w-48">
                   <label className="block text-xs text-gray-500 mb-1">Batch ID</label>
                   <select 
@@ -554,14 +554,24 @@ export default function SalesBilling() {
                     onChange={handleBatchChange}
                   >
                     <option value="">Select Batch</option>
-                    {availableBatches.map((b, idx) => (
-                      <option key={idx} value={b.batch_number || b.batch_id || b.id}>
-                        {b.batch_number || b.batch_id || b.id} (Qty: {b.stock_qty || b.available_stock || 0})
-                      </option>
-                    ))}
+                    {availableBatches.map((b, idx) => {
+                      const batchId = b.batch_number || b.batch_id || b.id;
+                      
+                      const inCart = safeItems
+                        .filter(item => String(item.batch_id) === String(batchId))
+                        .reduce((sum, item) => sum + Number(item.qty), 0);
+                        
+                      const rawStock = Number(b.stock_qty || b.available_stock || 0);
+                      const displayStock = rawStock - inCart; 
+
+                      return (
+                        <option key={idx} value={batchId}>
+                          {batchId} (Qty: {displayStock})
+                        </option>
+                      )
+                    })}
                   </select>
                 </div>
-                {/* ---------------------------------------------------------- */}
 
                 <div className="w-24">
                   <label className="block text-xs text-gray-500 mb-1">Quantity</label>
