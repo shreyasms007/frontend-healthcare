@@ -276,7 +276,7 @@ export default function SalesBilling() {
     try {
       let itemsToPrint = [...safeItems]
       
-      // --- NEW FIX 1: Strict Validation for Pending Inputs ---
+      // Strict Validation for Pending Inputs
       if (currentItem.medicine_id && currentItem.qty > 0) {
         const isValid = inventory.some(inv => 
            (inv.medicine_name === currentItem.medicine_id || inv.name === currentItem.medicine_id || inv.item_name === currentItem.medicine_id) && 
@@ -295,59 +295,110 @@ export default function SalesBilling() {
         return;
       }
 
+      // Save the bill to the database before printing
       const saveSuccess = await handleSave(true);
       if (!saveSuccess) return;
 
       const doc = new jsPDF();
-      doc.setFontSize(22);
-      doc.setTextColor(24, 54, 102); 
-      doc.text("SARAJ MEDICALS", 14, 20);
       
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text("Tax Invoice / Cash Memo", 14, 27);
-      doc.text("State Code: 29 (Karnataka)", 140, 27);
+      // ==========================================
+      // 🏥 INVOICE TEMPLATE DETAILS (EASY TO CHANGE)
+      // ==========================================
+      const hospitalName = "JENUKAL PHARMACY (A Unit of Jenukal Hospital)";
+      const addressLine = "OPP GOVT HOSPITAL, DARGA COMPLEX, ARASIKERE, Karnataka - 573103";
+      const contactInfo = "Ph: 08174-234400, 7996779835";
+      const legalInfo = "GST No: 29AJTPR8514J1ZA  |  DL.No: KA-HS1-145811, KA-HS1-145812";
+      // ==========================================
 
-      doc.setFontSize(11);
-      doc.setTextColor(0);
-      doc.text(`Invoice No: ${formData.invoice_number || 'NEW'}`, 14, 45);
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, 140, 45);
-      doc.text(`Patient Name: ${formData.customer_name || 'Cash Customer'}`, 14, 52);
-      doc.text(`Phone: ${formData.phone_number || '-'}`, 140, 52);
-      doc.text(`Doctor: ${formData.doctor_name || '-'}`, 14, 59);
+      const totalAmt = calculateTotal(itemsToPrint);
+      const roundedTotal = Math.round(totalAmt);
+      const totalQty = itemsToPrint.reduce((sum, item) => sum + Number(item.qty || 0), 0);
 
-      const tableColumn = ["Medicine / Item", "Batch ID", "Qty", "Rate (Rs)", "Amount (Rs)"];
+      // Helper function to draw Header on EVERY page
+      const printHeader = (data) => {
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0); // Strict B&W
+        doc.text(hospitalName, 14, 20);
+        
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        doc.text(addressLine, 14, 25);
+        doc.text(contactInfo, 14, 30);
+        doc.text(legalInfo, 14, 35);
+        
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.line(14, 38, 196, 38);
+        
+        // Patient & Invoice Info
+        doc.setFontSize(11);
+        doc.text(`Patient: ${formData.customer_name || 'Cash Customer'}`, 14, 45);
+        doc.text(`Phone: ${formData.phone_number || '-'}`, 14, 50);
+        doc.text(`Doctor: ${formData.doctor_name || '-'}`, 14, 55);
+        
+        doc.setFont("helvetica", "bold");
+        doc.text("COMPOSIT INV / CASH BILL", 130, 45);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Bill No: ${formData.invoice_number || formData.id || 'NEW'}`, 130, 50);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 130, 55);
+        
+        doc.line(14, 58, 196, 58);
+      };
+
+      // Map Line Items
+      const tableColumn = ["Qty", "Item Name", "Batch", "Rate (Rs)", "Amount (Rs)"];
       const tableRows = itemsToPrint.map(item => [
+        Number(item.qty).toFixed(2),
         item.medicine_id || '-',
         item.batch_id || '-',
-        item.qty || 0,
         Number(item.rate || 0).toFixed(2),
         Number(item.amount || 0).toFixed(2)
       ]);
 
+      // Generate AutoTable
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 68,
-        theme: 'striped',
-        headStyles: { fillColor: [24, 54, 102] }, 
-        styles: { fontSize: 10 },
-        alternateRowStyles: { fillColor: [245, 247, 250] }
+        startY: 60, // Starts below the header
+        theme: 'grid',
+        headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [0,0,0], lineWidth: 0.1 },
+        styles: { fontSize: 9, textColor: [0, 0, 0], lineColor: [0,0,0], lineWidth: 0.1 },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { top: 60, bottom: 40 }, // Reserves space on EVERY page for header & footer
+        
+        // This hook runs on every single page generated
+        didDrawPage: (data) => {
+          // 1. Draw Header
+          printHeader(data);
+          
+          // 2. Draw Footer (Total at the bottom of EVERY page)
+          const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
+          
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(0, 0, 0);
+          doc.text(`Total Items: ${itemsToPrint.length}    Total Qty: ${totalQty}`, 14, pageHeight - 30);
+          doc.text(`Sub Total: Rs ${totalAmt.toFixed(2)}`, 140, pageHeight - 30);
+          
+          doc.setFontSize(14);
+          doc.text(`Rounded Total: Rs ${roundedTotal}.00`, 120, pageHeight - 22);
+          
+          doc.setFontSize(8);
+          doc.setFont("helvetica", "normal");
+          doc.text("E. & O.E. Goods Once Sold Cannot Be Taken Back Or Exchng.", 14, pageHeight - 15);
+          doc.setFont("helvetica", "bold");
+          doc.text("CAUTION: Once the bill is printed, the medicines cannot be returned.", 14, pageHeight - 11);
+          
+          // Page Number
+          doc.setFont("helvetica", "normal");
+          doc.text(`Page ${data.pageNumber}`, 196, pageHeight - 11, { align: 'right' });
+        }
       });
-
-      const finalY = doc.lastAutoTable.finalY || 68;
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Total Amount: Rs ${calculateTotal(itemsToPrint).toFixed(2)}`, 130, finalY + 15);
-
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(150);
-      doc.text("Thank you for your visit. Get well soon!", 14, 280);
 
       doc.save(`Invoice_${formData.phone_number || 'Sale'}.pdf`);
       
-      localStorage.removeItem('salesBillDraft'); // Clear Draft on Print Success
+      localStorage.removeItem('salesBillDraft'); 
       setFormData({ ...emptyForm })
       setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 })
       setActiveView('list')
