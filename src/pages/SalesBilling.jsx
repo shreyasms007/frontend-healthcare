@@ -184,11 +184,17 @@ export default function SalesBilling() {
       (inv.batch_number == currentItem.batch_id) || (inv.batch_id == currentItem.batch_id) || (inv.id == currentItem.batch_id)
     );
     
-    if (selectedInv && currentItem.qty > (selectedInv.stock_qty || selectedInv.available_stock || 0)) {
-      alert(`⚠️ Insufficient Stock! Only ${(selectedInv.stock_qty || selectedInv.available_stock || 0)} available in this batch.`);
+    const alreadyInCart = safeItems
+      .filter(item => item.batch_id == currentItem.batch_id)
+      .reduce((sum, item) => sum + Number(item.qty), 0);
+
+    const totalRequestedQty = currentItem.qty + alreadyInCart;
+    const availableStock = selectedInv ? (selectedInv.stock_qty || selectedInv.available_stock || 0) : 0;
+
+    if (selectedInv && totalRequestedQty > availableStock) {
+      alert(`⚠️ Insufficient Stock! You already have ${alreadyInCart} of this batch in the bill. You only have ${availableStock} total available.`);
       return;
     }
-    // --------------------------------------------------------
 
     if (!currentItem.medicine_id || currentItem.qty <= 0) return
     setFormData(prev => ({
