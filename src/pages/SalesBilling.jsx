@@ -272,7 +272,7 @@ export default function SalesBilling() {
     }
   }
 
-  const handlePrint = async () => {
+ const handlePrint = async () => {
     try {
       let itemsToPrint = [...safeItems]
       
@@ -299,10 +299,17 @@ export default function SalesBilling() {
       const saveSuccess = await handleSave(true);
       if (!saveSuccess) return;
 
-      const doc = new jsPDF();
+      // 1. Initialize strictly as A5 Size
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+      
+      // Calculate dynamic widths for A5 (Width: 148.5mm, Height: 210mm)
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const rightMarginX = pageWidth - 10; // Right edge for lines and page numbers
+      const col2X = pageWidth - 55;        // Left alignment for the second column (Bill No, Totals)
       
       // ==========================================
-      // 🏥 INVOICE TEMPLATE DETAILS (EASY TO CHANGE)
+      // 🏥 INVOICE TEMPLATE DETAILS
       // ==========================================
       const hospitalName = "JENUKAL PHARMACY (A Unit of Jenukal Hospital)";
       const addressLine = "OPP GOVT HOSPITAL, DARGA COMPLEX, ARASIKERE, Karnataka - 573103";
@@ -316,38 +323,38 @@ export default function SalesBilling() {
 
       // Helper function to draw Header on EVERY page
       const printHeader = (data) => {
-        doc.setFontSize(14);
+        // Adjusted font sizes to fit A5
+        doc.setFontSize(11);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(0, 0, 0); // Strict B&W
+        doc.setTextColor(0, 0, 0); 
         doc.text(hospitalName, 14, 20);
         
-        doc.setFontSize(9);
+        doc.setFontSize(7);
         doc.setFont("helvetica", "normal");
         doc.text(addressLine, 14, 25);
-        doc.text(contactInfo, 14, 30);
-        doc.text(legalInfo, 14, 35);
+        doc.text(contactInfo, 14, 29);
+        doc.text(legalInfo, 14, 33);
         
         doc.setDrawColor(0, 0, 0);
         doc.setLineWidth(0.5);
-        doc.line(14, 38, 196, 38);
+        doc.line(14, 36, rightMarginX, 36);
         
         // Patient & Invoice Info
-        doc.setFontSize(11);
-        doc.text(`Patient: ${formData.customer_name || 'Cash Customer'}`, 14, 45);
-        doc.text(`Phone: ${formData.phone_number || '-'}`, 14, 50);
-        doc.text(`Doctor: ${formData.doctor_name || '-'}`, 14, 55);
+        doc.setFontSize(9);
+        doc.text(`Patient: ${formData.customer_name || 'Cash Customer'}`, 14, 42);
+        doc.text(`Phone: ${formData.phone_number || '-'}`, 14, 47);
+        doc.text(`Doctor: ${formData.doctor_name || '-'}`, 14, 52);
         
         doc.setFont("helvetica", "bold");
-        doc.text("COMPOSIT INV / CASH BILL", 130, 45);
+        doc.text("COMPOSIT INV / CASH BILL", col2X, 42);
         doc.setFont("helvetica", "normal");
-        doc.text(`Bill No: ${formData.invoice_number || formData.id || 'NEW'}`, 130, 50);
-        doc.text(`Date: ${new Date().toLocaleDateString()}`, 130, 55);
+        doc.text(`Bill No: ${formData.invoice_number || formData.id || 'NEW'}`, col2X, 47);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, col2X, 52);
         
-        doc.line(14, 58, 196, 58);
+        doc.line(14, 55, rightMarginX, 55);
       };
 
-      // Map Line Items
-      const tableColumn = ["Qty", "Item Name", "Batch", "Rate (Rs)", "Amount (Rs)"];
+      const tableColumn = ["Qty", "Item Name", "Batch", "Rate", "Amount"];
       const tableRows = itemsToPrint.map(item => [
         Number(item.qty).toFixed(2),
         item.medicine_id || '-',
@@ -360,43 +367,47 @@ export default function SalesBilling() {
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 60, // Starts below the header
+        startY: 57, 
         theme: 'grid',
         headStyles: { fillColor: [220, 220, 220], textColor: [0, 0, 0], fontStyle: 'bold', lineColor: [0,0,0], lineWidth: 0.1 },
-        styles: { fontSize: 9, textColor: [0, 0, 0], lineColor: [0,0,0], lineWidth: 0.1 },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
-        margin: { top: 60, bottom: 40 }, // Reserves space on EVERY page for header & footer
+        styles: { fontSize: 8, textColor: [0, 0, 0], lineColor: [0,0,0], lineWidth: 0.1, cellPadding: 1.5 },
+        alternateRowStyles: { fillColor: [250, 250, 250] },
+        margin: { top: 57, bottom: 40, left: 14, right: 10 }, 
         
-        // This hook runs on every single page generated
         didDrawPage: (data) => {
-          // 1. Draw Header
           printHeader(data);
           
-          // 2. Draw Footer (Total at the bottom of EVERY page)
-          const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-          
-          doc.setFontSize(10);
+          doc.setFontSize(9);
           doc.setFont("helvetica", "bold");
           doc.setTextColor(0, 0, 0);
-          doc.text(`Total Items: ${itemsToPrint.length}    Total Qty: ${totalQty}`, 14, pageHeight - 30);
-          doc.text(`Sub Total: Rs ${totalAmt.toFixed(2)}`, 140, pageHeight - 30);
+          doc.text(`Total Items: ${itemsToPrint.length}    Qty: ${totalQty}`, 14, pageHeight - 28);
+          doc.text(`Sub Total: Rs ${totalAmt.toFixed(2)}`, col2X, pageHeight - 28);
           
-          doc.setFontSize(14);
-          doc.text(`Rounded Total: Rs ${roundedTotal}.00`, 120, pageHeight - 22);
+          doc.setFontSize(12);
+          // Shifted slightly left to accommodate larger font on narrow A5 width
+          doc.text(`Rounded Total: Rs ${roundedTotal}.00`, col2X - 5, pageHeight - 20);
           
-          doc.setFontSize(8);
+          doc.setFontSize(7);
           doc.setFont("helvetica", "normal");
-          doc.text("E. & O.E. Goods Once Sold Cannot Be Taken Back Or Exchng.", 14, pageHeight - 15);
+          doc.text("E. & O.E. Goods Once Sold Cannot Be Taken Back Or Exchng.", 14, pageHeight - 13);
           doc.setFont("helvetica", "bold");
-          doc.text("CAUTION: Once the bill is printed, the medicines cannot be returned.", 14, pageHeight - 11);
+          doc.text("CAUTION: Once the bill is printed, the medicines cannot be returned.", 14, pageHeight - 9);
           
-          // Page Number
           doc.setFont("helvetica", "normal");
-          doc.text(`Page ${data.pageNumber}`, 196, pageHeight - 11, { align: 'right' });
+          doc.text(`Page ${data.pageNumber}`, rightMarginX, pageHeight - 9, { align: 'right' });
         }
       });
 
-      doc.save(`Invoice_${formData.phone_number || 'Sale'}.pdf`);
+      // 2. FORCE DOWNLOAD: Bypass browser extensions by using a raw Blob URL
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = `Invoice_${formData.phone_number || 'Sale'}.pdf`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(blobUrl);
       
       localStorage.removeItem('salesBillDraft'); 
       setFormData({ ...emptyForm })
