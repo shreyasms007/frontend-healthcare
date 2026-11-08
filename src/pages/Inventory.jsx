@@ -7,7 +7,6 @@ export default function Inventory() {
   useEffect(() => {
     const fetchInventory = async () => {
       try {
-        // Adjust this endpoint if your backend uses a different path for live inventory
         const res = await fetch(`${API_BASE}/api/inventory`); 
         const data = await res.json();
         
@@ -19,6 +18,9 @@ export default function Inventory() {
     };
     fetchInventory();
   }, []);
+
+  // FILTER: Hide all 0 and negative stock items from the visual ledger
+  const activeInventory = inventoryList.filter(item => Number(item.stock_qty || 0) > 0);
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
@@ -40,9 +42,9 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {inventoryList.map((item, index) => (
+              {/* Map over the FILTERED inventory instead of the raw list */}
+              {activeInventory.map((item, index) => (
                 <tr key={index} className="border-b hover:bg-teal-50 transition-colors">
-                  {/* Matching the exact JSON keys from your network tab */}
                   <td className="p-3 font-bold text-hospital-navy">{item.medicine_name}</td>
                   <td className="p-3">{item.batch_number}</td>
                   <td className="p-3">
@@ -55,10 +57,11 @@ export default function Inventory() {
                 </tr>
               ))}
               
-              {inventoryList.length === 0 && (
+              {/* Check the filtered list length to show the empty message */}
+              {activeInventory.length === 0 && (
                 <tr>
                   <td colSpan="5" className="p-8 text-center text-gray-500 font-semibold">
-                    Inventory is empty. Record a purchase invoice to stock items.
+                    Inventory is empty or all items are currently out of stock. Record a purchase invoice to add items.
                   </td>
                 </tr>
               )}
