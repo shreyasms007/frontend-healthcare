@@ -16,7 +16,7 @@ export default function SalesBilling() {
 
   const [activeView, setActiveView] = useState('create')
   const [formData, setFormData] = useState({ ...emptyForm })
-  // NEW: State to hold the original snapshot of items when editing a parked bill
+  // Snapshot of original items to fix math when editing parked bills
   const [originalItems, setOriginalItems] = useState([])
   const [sales, setSales] = useState([])
   const [inventory, setInventory] = useState([]) 
@@ -91,13 +91,24 @@ export default function SalesBilling() {
     return Array.from(new Set(names));
   }, [inventory])
 
+  // NEW FIX: Filter out negative/0 stock items unless they are currently in the cart
   const availableBatches = useMemo(() => {
-    return inventory.filter(inv => 
-      (inv.medicine_name === currentItem.medicine_id) || 
-      (inv.item_name === currentItem.medicine_id) || 
-      (inv.name === currentItem.medicine_id)
-    );
-  }, [inventory, currentItem.medicine_id])
+    return inventory.filter(inv => {
+      const isMatch = (inv.medicine_name === currentItem.medicine_id) || 
+                      (inv.item_name === currentItem.medicine_id) || 
+                      (inv.name === currentItem.medicine_id);
+      
+      if (!isMatch) return false;
+
+      const batchId = String(inv.batch_number || inv.batch_id || inv.id);
+      
+      // Check if this batch is already sitting in the bill table
+      const isInCart = safeItems.some(item => String(item.batch_id) === batchId);
+      
+      // Only show the batch in the dropdown if it has stock > 0 OR if it's already in the cart
+      return Number(inv.stock_qty || inv.available_stock || 0) > 0 || isInCart;
+    });
+  }, [inventory, currentItem.medicine_id, safeItems])
 
   const handlePhoneChange = (e) => {
     const phone = e.target.value
@@ -112,7 +123,7 @@ export default function SalesBilling() {
         phone_number: phone,
         customer_name: pastSale ? pastSale.customer_name : ''
       }))
-      setOriginalItems([]) // Clear snapshot on new customer
+      setOriginalItems([]) 
       setActiveView('create')
     }
   }
@@ -182,7 +193,6 @@ export default function SalesBilling() {
       String(item.medicine_id) === String(currentItem.medicine_id)
     );
 
-    // Calculate True Available Stock (DB Stock + Original snapshot Qty)
     const originalQty = originalItems
       .filter(item => String(item.batch_id) === String(currentItem.batch_id))
       .reduce((sum, item) => sum + Number(item.qty), 0);
@@ -226,24 +236,36 @@ export default function SalesBilling() {
     return list.reduce((sum, item) => sum + ((item.qty || 0) * (item.rate || 0)), 0)
   }
 
+  // NEW FIX: Save function safely merges pending inputs to prevent backend duplicates
   const handleSave = async (isIssuedFlag = false) => {
     if (!formData.phone_number) {
       alert("Phone number is required!")
       return false
     }
 
-    let itemsToSave = [...safeItems]
+    let itemsToSave = JSON.parse(JSON.stringify(safeItems));
     
     if (currentItem.medicine_id && currentItem.qty > 0) {
       const isValid = inventory.some(inv => 
          (inv.medicine_name === currentItem.medicine_id || inv.name === currentItem.medicine_id || inv.item_name === currentItem.medicine_id) && 
          (String(inv.batch_number) === String(currentItem.batch_id) || String(inv.batch_id) === String(currentItem.batch_id) || String(inv.id) === String(currentItem.batch_id))
       );
+      
       if (isValid) {
-        itemsToSave.push({
-          ...currentItem,
-          amount: currentItem.qty * currentItem.rate
-        })
+        const existingIdx = itemsToSave.findIndex(item => 
+          String(item.batch_id) === String(currentItem.batch_id) && 
+          String(item.medicine_id) === String(currentItem.medicine_id)
+        );
+        
+        if (existingIdx >= 0) {
+          itemsToSave[existingIdx].qty = Number(itemsToSave[existingIdx].qty) + Number(currentItem.qty);
+          itemsToSave[existingIdx].amount = itemsToSave[existingIdx].qty * Number(itemsToSave[existingIdx].rate);
+        } else {
+          itemsToSave.push({
+            ...currentItem,
+            amount: Number(currentItem.qty) * Number(currentItem.rate)
+          });
+        }
       }
     }
 
@@ -276,7 +298,7 @@ export default function SalesBilling() {
             alert('Bill saved as Open (Unissued).')
             setActiveView('list') 
         }
-        setOriginalItems([]) // Clear snapshot on success
+        setOriginalItems([]) 
         return true
       } else {
         alert('Failed to save sale: ' + await res.text())
@@ -290,7 +312,7 @@ export default function SalesBilling() {
 
   const handlePrint = async () => {
     try {
-      let itemsToPrint = [...safeItems]
+      let itemsToPrint = JSON.parse(JSON.stringify(safeItems));
       
       if (currentItem.medicine_id && currentItem.qty > 0) {
         const isValid = inventory.some(inv => 
@@ -298,10 +320,19 @@ export default function SalesBilling() {
            (String(inv.batch_number) === String(currentItem.batch_id) || String(inv.batch_id) === String(currentItem.batch_id) || String(inv.id) === String(currentItem.batch_id))
         );
         if (isValid) {
-          itemsToPrint.push({
-            ...currentItem,
-            amount: currentItem.qty * currentItem.rate
-          })
+          const existingIdx = itemsToPrint.findIndex(item => 
+            String(item.batch_id) === String(currentItem.batch_id) && 
+            String(item.medicine_id) === String(currentItem.medicine_id)
+          );
+          if (existingIdx >= 0) {
+            itemsToPrint[existingIdx].qty = Number(itemsToPrint[existingIdx].qty) + Number(currentItem.qty);
+            itemsToPrint[existingIdx].amount = itemsToPrint[existingIdx].qty * Number(itemsToPrint[existingIdx].rate);
+          } else {
+            itemsToPrint.push({
+              ...currentItem,
+              amount: Number(currentItem.qty) * Number(currentItem.rate)
+            });
+          }
         }
       }
 
@@ -314,7 +345,6 @@ export default function SalesBilling() {
       if (!saveSuccess) return;
 
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
-      
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const rightMarginX = pageWidth - 10; 
@@ -434,7 +464,6 @@ export default function SalesBilling() {
       is_issued: sale.is_issued || false,
       items: loadedItems 
     })
-    // Save snapshot to reverse the frontend math during edit mode
     setOriginalItems(JSON.parse(JSON.stringify(loadedItems)))
     setCurrentItem({ medicine_id: '', batch_id: '', qty: 1, rate: 0 })
     setActiveView('edit')
@@ -557,7 +586,6 @@ export default function SalesBilling() {
                     {availableBatches.map((b, idx) => {
                       const batchId = b.batch_number || b.batch_id || b.id;
                       
-                      // MATH FIX: Calculate true stock using original snapshot
                       const originalQty = originalItems
                         .filter(item => String(item.batch_id) === String(batchId))
                         .reduce((sum, item) => sum + Number(item.qty), 0);
