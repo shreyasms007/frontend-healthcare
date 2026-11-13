@@ -3,6 +3,7 @@ import { API_BASE } from '../config.js';
 
 export default function Inventory() {
   const [inventoryList, setInventoryList] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -19,15 +20,42 @@ export default function Inventory() {
     fetchInventory();
   }, []);
 
-  // FILTER: Hide all 0 and negative stock items from the visual ledger
-  const activeInventory = inventoryList.filter(item => Number(item.stock_qty || 0) > 0);
+  // FILTER: Hide 0/negative stock AND apply search query
+  const activeInventory = inventoryList.filter(item => {
+    // 1. Check stock level
+    const hasStock = Number(item.stock_qty || 0) > 0;
+    if (!hasStock) return false;
+
+    // 2. Check search term
+    if (!searchTerm.trim()) return true;
+    
+    const query = searchTerm.toLowerCase();
+    const medName = (item.medicine_name || '').toLowerCase();
+    const batchNo = (String(item.batch_number) || '').toLowerCase();
+
+    return medName.includes(query) || batchNo.includes(query);
+  });
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen font-sans">
       <div className="bg-white rounded-lg shadow border border-gray-200">
         
-        <div className="bg-hospital-navy text-white px-6 py-3 rounded-t-lg font-bold">
+        <div className="bg-hospital-navy text-white px-6 py-3 rounded-t-lg font-bold flex justify-between items-center">
           <h1 className="text-xl uppercase tracking-wide m-0">Live Inventory Stock Levels</h1>
+        </div>
+
+        {/* SEARCH BAR SECTION */}
+        <div className="p-4 bg-gray-50 border-b border-gray-200 flex">
+          <div className="relative w-full max-w-md">
+            <input
+              type="text"
+              placeholder="Search by Medicine Name or Batch Number..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full border p-2 pl-9 rounded text-sm bg-white shadow-sm focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+            />
+            <span className="absolute left-3 top-2 text-gray-400 text-base">🔍</span>
+          </div>
         </div>
 
         <div className="p-6 overflow-x-auto">
@@ -42,7 +70,6 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {/* Map over the FILTERED inventory instead of the raw list */}
               {activeInventory.map((item, index) => (
                 <tr key={index} className="border-b hover:bg-teal-50 transition-colors">
                   <td className="p-3 font-bold text-hospital-navy">{item.medicine_name}</td>
@@ -57,11 +84,12 @@ export default function Inventory() {
                 </tr>
               ))}
               
-              {/* Check the filtered list length to show the empty message */}
               {activeInventory.length === 0 && (
                 <tr>
                   <td colSpan="5" className="p-8 text-center text-gray-500 font-semibold">
-                    Inventory is empty or all items are currently out of stock. Record a purchase invoice to add items.
+                    {searchTerm 
+                      ? "No matching inventory found for your search." 
+                      : "Inventory is empty or all items are currently out of stock. Record a purchase invoice to add items."}
                   </td>
                 </tr>
               )}
