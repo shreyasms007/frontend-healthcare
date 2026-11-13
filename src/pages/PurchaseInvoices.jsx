@@ -6,16 +6,33 @@ export default function PurchaseInvoices() {
   const [suppliers, setSuppliers] = useState([])
   const [medicines, setMedicines] = useState([])
 
-  // Modal states for New Medicine
+  // Modal states for New Medicine (Exactly matching MedicineMaster schema)
   const [showMedModal, setShowMedModal] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
-  const [newMedForm, setNewMedForm] = useState({
+  const emptyMedForm = {
     name: '',
-    generic_name: '',
     manufacturer: '',
+    brand_name: '',
+    major_content: '',
+    packing: '',
+    qty_per_pack: 1,
+    group: '',
+    item_category: '',
+    profile_category: '',
+    schedule: '',
+    barcode: '',
+    rack: '',
     hsn_code: '',
-    category: 'Tablet'
-  });
+    gst_pct: 0,
+    cess_pct: 0,
+    wholesale_rate: 0,
+    min_qty: 0,
+    max_qty: 0,
+    requires_license: false,
+    is_active: true,
+    note: ''
+  };
+  const [newMedForm, setNewMedForm] = useState({ ...emptyMedForm });
 
   const todayStr = new Date().toISOString().split('T')[0]
 
@@ -166,37 +183,45 @@ export default function PurchaseInvoices() {
     } catch (err) { console.error(err) }
   }
 
-  // Handle saving the new medicine from the modal popup
+  // Handle Modal Save (Perfectly matches MedicineMaster.jsx payload parsing)
   const handleSaveNewMedicine = async () => {
     if (!newMedForm.name.trim()) {
       alert("Medicine name is required.");
       return;
     }
 
+    const payload = {
+      ...newMedForm,
+      qty_per_pack: parseInt(newMedForm.qty_per_pack, 10) || 1,
+      gst_pct: parseFloat(newMedForm.gst_pct) || 0,
+      cess_pct: parseFloat(newMedForm.cess_pct) || 0,
+      wholesale_rate: parseFloat(newMedForm.wholesale_rate) || 0,
+      min_qty: parseInt(newMedForm.min_qty, 10) || 0,
+      max_qty: parseInt(newMedForm.max_qty, 10) || 0
+    }
+
     try {
       const res = await fetch(`${API_BASE}/api/medicines`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newMedForm)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
-        // Fetch the updated medicines list immediately to get the new ID
+        // Fetch updated medicines to get the new ID
         const fetchRes = await fetch(`${API_BASE}/api/medicines`);
         const updatedMedicines = await fetchRes.json();
         setMedicines(updatedMedicines || []);
 
-        // Find the newly added medicine to grab its ID
         const newlyAdded = updatedMedicines.find(m => m.name.toUpperCase() === newMedForm.name.toUpperCase());
 
-        // Auto-select the newly added medicine in the row the user was working on
+        // Auto-select the newly added medicine in the row
         if (newlyAdded && activeRowIndex !== null) {
           handleItemChange(activeRowIndex, 'medicine_id', newlyAdded.id);
         }
 
-        // Close and reset modal
         setShowMedModal(false);
-        setNewMedForm({ name: '', generic_name: '', manufacturer: '', hsn_code: '', category: 'Tablet' });
+        setNewMedForm({ ...emptyMedForm });
         setActiveRowIndex(null);
       } else {
         alert("Failed to add medicine: " + await res.text());
@@ -211,7 +236,6 @@ export default function PurchaseInvoices() {
     <div className="space-y-6 relative">
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden text-xs">
         
-        {/* TOP HEADER PANEL (Pharmsoft GST Layout) */}
         <form onSubmit={handleSubmit}>
           <div className="bg-slate-100 p-4 border-b border-gray-300 grid grid-cols-12 gap-4 items-center">
             
@@ -292,7 +316,7 @@ export default function PurchaseInvoices() {
             </div>
           </div>
 
-          {/* LINE ITEMS GRID (Pharmsoft GST Columns) */}
+          {/* LINE ITEMS GRID */}
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead className="bg-hospital-navy text-white text-[11px]">
@@ -331,8 +355,6 @@ export default function PurchaseInvoices() {
                       >
                         <option value="">Select Medicine</option>
                         {medicines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        
-                        {/* THE NEW TRIGGER OPTION */}
                         <option value="ADD_NEW" className="font-bold text-hospital-teal bg-teal-50">
                           + Add New Medicine...
                         </option>
@@ -409,86 +431,141 @@ export default function PurchaseInvoices() {
         </table>
       </div>
 
-      {/* ADD NEW MEDICINE MODAL */}
+      {/* EXPANDED ADD NEW MEDICINE MODAL */}
       {showMedModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden text-sm">
-            <div className="bg-hospital-navy text-white px-6 py-3 font-bold flex justify-between items-center">
-              <span>+ Add Medicine to Master</span>
-              <button onClick={() => setShowMedModal(false)} className="text-gray-300 hover:text-white font-bold text-xl">&times;</button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden text-sm">
+            <div className="bg-hospital-teal text-white px-6 py-4 font-bold flex justify-between items-center shrink-0">
+              <span className="text-lg">+ Create Item Master (Quick Add)</span>
+              <button onClick={() => setShowMedModal(false)} className="text-white hover:text-gray-200 font-bold text-2xl">&times;</button>
             </div>
             
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs text-gray-500 font-bold mb-1">Medicine Name *</label>
-                <input 
-                  type="text" 
-                  value={newMedForm.name} 
-                  onChange={e => setNewMedForm({...newMedForm, name: e.target.value.toUpperCase()})}
-                  className="w-full border p-2 rounded focus:ring-hospital-teal" 
-                  placeholder="e.g., DOLO 650"
-                  autoFocus
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-500 font-bold mb-1">Generic / Composition</label>
-                  <input 
-                    type="text" 
-                    value={newMedForm.generic_name} 
-                    onChange={e => setNewMedForm({...newMedForm, generic_name: e.target.value})}
-                    className="w-full border p-2 rounded" 
-                  />
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-gray-700 border-b pb-1">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Item Name *</label>
+                    <input type="text" value={newMedForm.name} onChange={e => setNewMedForm({...newMedForm, name: e.target.value.toUpperCase()})} className="w-full border p-2 rounded focus:ring-hospital-teal" autoFocus required />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Manufacturer</label>
+                    <input type="text" value={newMedForm.manufacturer} onChange={e => setNewMedForm({...newMedForm, manufacturer: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Brand Name</label>
+                    <input type="text" value={newMedForm.brand_name} onChange={e => setNewMedForm({...newMedForm, brand_name: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 font-bold mb-1">Category</label>
-                  <select 
-                    value={newMedForm.category} 
-                    onChange={e => setNewMedForm({...newMedForm, category: e.target.value})}
-                    className="w-full border p-2 rounded bg-white"
-                  >
-                    <option>Tablet</option>
-                    <option>Syrup</option>
-                    <option>Injection</option>
-                    <option>Ointment</option>
-                    <option>Drops</option>
-                  </select>
+                  <label className="block text-xs text-gray-500 mb-1">Major Content (Composition)</label>
+                  <input type="text" value={newMedForm.major_content} onChange={e => setNewMedForm({...newMedForm, major_content: e.target.value})} className="w-full border p-2 rounded" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-500 font-bold mb-1">Manufacturer (Brand)</label>
-                  <input 
-                    type="text" 
-                    value={newMedForm.manufacturer} 
-                    onChange={e => setNewMedForm({...newMedForm, manufacturer: e.target.value})}
-                    className="w-full border p-2 rounded" 
-                  />
+
+              {/* Categorization & Packaging */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-gray-700 border-b pb-1">Categorization & Packaging</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Packing (e.g., 10x10)</label>
+                    <input type="text" value={newMedForm.packing} onChange={e => setNewMedForm({...newMedForm, packing: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Qty / Pack</label>
+                    <input type="number" value={newMedForm.qty_per_pack} onChange={e => setNewMedForm({...newMedForm, qty_per_pack: e.target.value})} className="w-full border p-2 rounded text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Group (Category)</label>
+                    <input type="text" placeholder="e.g. TABLETS" value={newMedForm.group} onChange={e => setNewMedForm({...newMedForm, group: e.target.value.toUpperCase()})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Schedule</label>
+                    <input type="text" placeholder="e.g. SCHEDULE H1" value={newMedForm.schedule} onChange={e => setNewMedForm({...newMedForm, schedule: e.target.value.toUpperCase()})} className="w-full border p-2 rounded" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 font-bold mb-1">HSN Code</label>
-                  <input 
-                    type="text" 
-                    value={newMedForm.hsn_code} 
-                    onChange={e => setNewMedForm({...newMedForm, hsn_code: e.target.value})}
-                    className="w-full border p-2 rounded" 
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Item Category</label>
+                    <input type="text" value={newMedForm.item_category} onChange={e => setNewMedForm({...newMedForm, item_category: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Profile Category</label>
+                    <input type="text" value={newMedForm.profile_category} onChange={e => setNewMedForm({...newMedForm, profile_category: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
                 </div>
               </div>
+
+              {/* Inventory & Location */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-gray-700 border-b pb-1">Inventory & Location</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Rack / Shelf</label>
+                    <input type="text" value={newMedForm.rack} onChange={e => setNewMedForm({...newMedForm, rack: e.target.value.toUpperCase()})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Barcode</label>
+                    <input type="text" value={newMedForm.barcode} onChange={e => setNewMedForm({...newMedForm, barcode: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Min Qty Alert</label>
+                    <input type="number" value={newMedForm.min_qty} onChange={e => setNewMedForm({...newMedForm, min_qty: e.target.value})} className="w-full border p-2 rounded text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Max Qty Limit</label>
+                    <input type="number" value={newMedForm.max_qty} onChange={e => setNewMedForm({...newMedForm, max_qty: e.target.value})} className="w-full border p-2 rounded text-right" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tax & Compliance */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-gray-700 border-b pb-1">Tax & Compliance</h3>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">HSN/SAC Code</label>
+                    <input type="text" value={newMedForm.hsn_code} onChange={e => setNewMedForm({...newMedForm, hsn_code: e.target.value})} className="w-full border p-2 rounded" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">GST %</label>
+                    <input type="number" step="0.01" value={newMedForm.gst_pct} onChange={e => setNewMedForm({...newMedForm, gst_pct: e.target.value})} className="w-full border p-2 rounded text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">CESS %</label>
+                    <input type="number" step="0.01" value={newMedForm.cess_pct} onChange={e => setNewMedForm({...newMedForm, cess_pct: e.target.value})} className="w-full border p-2 rounded text-right" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Wholesale Rate</label>
+                    <input type="number" step="0.01" value={newMedForm.wholesale_rate} onChange={e => setNewMedForm({...newMedForm, wholesale_rate: e.target.value})} className="w-full border p-2 rounded text-right" />
+                  </div>
+                  <div className="flex flex-col gap-2 mt-4 ml-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={newMedForm.requires_license} onChange={e => setNewMedForm({...newMedForm, requires_license: e.target.checked})} className="accent-hospital-teal" />
+                      <span className="text-xs text-gray-600">Requires Licence</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={newMedForm.is_active} onChange={e => setNewMedForm({...newMedForm, is_active: e.target.checked})} className="accent-hospital-teal" />
+                      <span className="text-xs text-gray-600">Active Item</span>
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Internal Note</label>
+                  <textarea value={newMedForm.note} onChange={e => setNewMedForm({...newMedForm, note: e.target.value})} className="w-full border p-2 rounded h-12 resize-none" />
+                </div>
+              </div>
+
             </div>
 
-            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
-              <button 
-                onClick={() => setShowMedModal(false)} 
-                className="px-4 py-2 border rounded text-gray-600 font-bold hover:bg-gray-200"
-              >
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3 shrink-0">
+              <button onClick={() => setShowMedModal(false)} className="px-6 py-2.5 border border-gray-300 rounded text-gray-700 font-bold hover:bg-gray-200 transition">
                 Cancel
               </button>
-              <button 
-                onClick={handleSaveNewMedicine} 
-                className="px-4 py-2 bg-hospital-teal text-white rounded font-bold hover:bg-teal-700 shadow"
-              >
-                Save Medicine
+              <button onClick={handleSaveNewMedicine} className="px-6 py-2.5 bg-hospital-teal text-white rounded font-bold hover:bg-teal-700 shadow transition">
+                Save Medicine Master
               </button>
             </div>
           </div>
