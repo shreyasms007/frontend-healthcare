@@ -1,4 +1,4 @@
-export const MEDICINE_DATABASE = [
+export const ACCOUNT_DATABASE = [
    { name: "DV 60K SYP", manufacturer: "3 M HEALTH CARE", group: "SYRUPS", code: "1247", brandName: "DV", composition: "Cholecalciferol 60,000 IU", packing: "100ml", itemCategory: "Allopathic" },
   { name: "OLEPTAL-OD 300 TAB", manufacturer: "3 M HEALTH CARE", group: "TABLETS", code: "15213", brandName: "OLEPTAL-OD", composition: "Oxcarbazepine", packing: "10x10", itemCategory: "Allopathic" },
   { name: "NUFORCE DUSTING POWDER", manufacturer: "3 M HEALTH CARE", group: "POWDERS / SACHETS", code: "159", brandName: "NUFORCE DUSTING", composition: "Fluconazole", packing: "1 Sachet", itemCategory: "Allopathic" },
