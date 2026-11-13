@@ -75,69 +75,69 @@ export default function MedicineMaster() {
     return suggestions
   }, [medicines])
 
-  // Merge default group categories with any custom groups saved in the active database
   const uniqueGroupSuggestions = useMemo(() => {
     const groupSet = new Set(DEFAULT_GROUPS || [])
-
     medicines.forEach(m => {
       if (m.group && m.group.trim()) {
         groupSet.add(m.group.trim().toUpperCase())
       }
     })
-
     return Array.from(groupSet).sort()
   }, [medicines])
 
-  // Merge default schedules with any custom schedules saved in the active database
   const uniqueScheduleSuggestions = useMemo(() => {
     const scheduleSet = new Set(DEFAULT_SCHEDULES || [])
-
     medicines.forEach(m => {
       if (m.schedule && m.schedule.trim()) {
         scheduleSet.add(m.schedule.trim().toUpperCase())
       }
     })
-
     return Array.from(scheduleSet).sort()
   }, [medicines])
 
-  // Auto-fill all mapped fields when typing or selecting a medicine name
+  // FIX: Robust mapping for all static fields (brandName, composition, packing, etc.)
   const handleNameChange = (e) => {
     const selectedName = e.target.value
     
-    // Default to what the user has already typed if no match is found
+    // Start with current form data so manual typing isn't lost if no match is found
     let autoData = {
       manufacturer: formData.manufacturer,
-      group: formData.group,
       brand_name: formData.brand_name,
       major_content: formData.major_content,
+      packing: formData.packing,
+      group: formData.group,
+      item_category: formData.item_category,
       barcode: formData.barcode
     }
 
-    // 1. Check live database first
-    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
-    
-    // 2. Check static JSON database fallback
+    // 1. Check static JSON database FIRST (Acts as the perfect baseline template)
     const foundInStatic = Array.isArray(MEDICINE_DATABASE)
       ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
       : null
 
-    if (foundInDb) {
-      if (foundInDb.manufacturer) autoData.manufacturer = foundInDb.manufacturer
-      if (foundInDb.group) autoData.group = foundInDb.group
-      if (foundInDb.brand_name) autoData.brand_name = foundInDb.brand_name
-      if (foundInDb.major_content) autoData.major_content = foundInDb.major_content
-      if (foundInDb.barcode) autoData.barcode = foundInDb.barcode
-    } else if (foundInStatic) {
-      // Map the exact keys from your static JSON file to your React state
-      if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer
-      if (foundInStatic.group) autoData.group = foundInStatic.group
-      if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName
-      if (foundInStatic.composition) autoData.major_content = foundInStatic.composition
-      if (foundInStatic.code) autoData.barcode = foundInStatic.code
+    if (foundInStatic) {
+      autoData.manufacturer = foundInStatic.manufacturer || ''
+      autoData.brand_name = foundInStatic.brandName || ''
+      autoData.major_content = foundInStatic.composition || ''
+      autoData.packing = foundInStatic.packing || ''
+      autoData.group = foundInStatic.group || ''
+      autoData.item_category = foundInStatic.itemCategory || ''
+      autoData.barcode = foundInStatic.code || ''
     }
 
-    // Update state with the selected name and all auto-filled fields
+    // 2. Check Live PostgreSQL database (Overrides static ONLY if it exists in DB)
+    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
+    
+    if (foundInDb) {
+      autoData.manufacturer = foundInDb.manufacturer || autoData.manufacturer
+      autoData.brand_name = foundInDb.brand_name || autoData.brand_name
+      autoData.major_content = foundInDb.major_content || autoData.major_content
+      autoData.packing = foundInDb.packing || autoData.packing
+      autoData.group = foundInDb.group || autoData.group
+      autoData.item_category = foundInDb.item_category || autoData.item_category
+      autoData.barcode = foundInDb.barcode || autoData.barcode
+    }
+
     setFormData(prev => ({
       ...prev,
       name: selectedName,
@@ -153,7 +153,6 @@ export default function MedicineMaster() {
     }))
   }
 
-  // Switch to edit mode with populated medicine fields
   const handleEdit = (med) => {
     setFormData({
       id: med.id,
@@ -226,7 +225,6 @@ export default function MedicineMaster() {
     }
   }
 
-  // Filter medicines for catalog view
   const filteredMedicines = useMemo(() => {
     if (!searchTerm.trim()) return medicines
     const query = searchTerm.toLowerCase()
