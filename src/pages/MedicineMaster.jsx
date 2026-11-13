@@ -101,30 +101,47 @@ export default function MedicineMaster() {
     return Array.from(scheduleSet).sort()
   }, [medicines])
 
-  // Auto-fill manufacturer and group when typing or selecting a medicine name
+  // Auto-fill all mapped fields when typing or selecting a medicine name
   const handleNameChange = (e) => {
     const selectedName = e.target.value
-    let autoManufacturer = formData.manufacturer
-    let autoGroup = formData.group
+    
+    // Default to what the user has already typed if no match is found
+    let autoData = {
+      manufacturer: formData.manufacturer,
+      group: formData.group,
+      brand_name: formData.brand_name,
+      major_content: formData.major_content,
+      barcode: formData.barcode
+    }
 
+    // 1. Check live database first
     const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
+    
+    // 2. Check static JSON database fallback
     const foundInStatic = Array.isArray(MEDICINE_DATABASE)
       ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
       : null
 
     if (foundInDb) {
-      if (foundInDb.manufacturer) autoManufacturer = foundInDb.manufacturer
-      if (foundInDb.group) autoGroup = foundInDb.group
+      if (foundInDb.manufacturer) autoData.manufacturer = foundInDb.manufacturer
+      if (foundInDb.group) autoData.group = foundInDb.group
+      if (foundInDb.brand_name) autoData.brand_name = foundInDb.brand_name
+      if (foundInDb.major_content) autoData.major_content = foundInDb.major_content
+      if (foundInDb.barcode) autoData.barcode = foundInDb.barcode
     } else if (foundInStatic) {
-      if (foundInStatic.manufacturer) autoManufacturer = foundInStatic.manufacturer
-      if (foundInStatic.group) autoGroup = foundInStatic.group
+      // Map the exact keys from your static JSON file to your React state
+      if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer
+      if (foundInStatic.group) autoData.group = foundInStatic.group
+      if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName
+      if (foundInStatic.composition) autoData.major_content = foundInStatic.composition
+      if (foundInStatic.code) autoData.barcode = foundInStatic.code
     }
 
+    // Update state with the selected name and all auto-filled fields
     setFormData(prev => ({
       ...prev,
       name: selectedName,
-      manufacturer: autoManufacturer,
-      group: autoGroup
+      ...autoData
     }))
   }
 
