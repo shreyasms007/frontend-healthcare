@@ -6,6 +6,17 @@ export default function PurchaseInvoices() {
   const [suppliers, setSuppliers] = useState([])
   const [medicines, setMedicines] = useState([])
 
+  // Modal states for New Medicine
+  const [showMedModal, setShowMedModal] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [newMedForm, setNewMedForm] = useState({
+    name: '',
+    generic_name: '',
+    manufacturer: '',
+    hsn_code: '',
+    category: 'Tablet'
+  });
+
   const todayStr = new Date().toISOString().split('T')[0]
 
   const emptyItem = {
@@ -155,8 +166,49 @@ export default function PurchaseInvoices() {
     } catch (err) { console.error(err) }
   }
 
+  // Handle saving the new medicine from the modal popup
+  const handleSaveNewMedicine = async () => {
+    if (!newMedForm.name.trim()) {
+      alert("Medicine name is required.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/medicines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newMedForm)
+      });
+
+      if (res.ok) {
+        // Fetch the updated medicines list immediately to get the new ID
+        const fetchRes = await fetch(`${API_BASE}/api/medicines`);
+        const updatedMedicines = await fetchRes.json();
+        setMedicines(updatedMedicines || []);
+
+        // Find the newly added medicine to grab its ID
+        const newlyAdded = updatedMedicines.find(m => m.name.toUpperCase() === newMedForm.name.toUpperCase());
+
+        // Auto-select the newly added medicine in the row the user was working on
+        if (newlyAdded && activeRowIndex !== null) {
+          handleItemChange(activeRowIndex, 'medicine_id', newlyAdded.id);
+        }
+
+        // Close and reset modal
+        setShowMedModal(false);
+        setNewMedForm({ name: '', generic_name: '', manufacturer: '', hsn_code: '', category: 'Tablet' });
+        setActiveRowIndex(null);
+      } else {
+        alert("Failed to add medicine: " + await res.text());
+      }
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred while saving the medicine.");
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden text-xs">
         
         {/* TOP HEADER PANEL (Pharmsoft GST Layout) */}
@@ -264,9 +316,26 @@ export default function PurchaseInvoices() {
                 {formData.items.map((item, idx) => (
                   <tr key={idx} className="hover:bg-blue-50/50">
                     <td className="p-1.5">
-                      <select value={item.medicine_id} onChange={(e) => handleItemChange(idx, 'medicine_id', e.target.value)} className="w-full border border-gray-300 p-1 rounded bg-white font-semibold" required>
+                      <select 
+                        value={item.medicine_id} 
+                        onChange={(e) => {
+                          if (e.target.value === 'ADD_NEW') {
+                            setActiveRowIndex(idx);
+                            setShowMedModal(true);
+                          } else {
+                            handleItemChange(idx, 'medicine_id', e.target.value);
+                          }
+                        }} 
+                        className="w-full border border-gray-300 p-1 rounded bg-white font-semibold" 
+                        required
+                      >
                         <option value="">Select Medicine</option>
                         {medicines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        
+                        {/* THE NEW TRIGGER OPTION */}
+                        <option value="ADD_NEW" className="font-bold text-hospital-teal bg-teal-50">
+                          + Add New Medicine...
+                        </option>
                       </select>
                     </td>
                     <td className="p-1"><input value={item.batch_number} onChange={(e) => handleItemChange(idx, 'batch_number', e.target.value)} className="w-full border border-gray-300 p-1 rounded uppercase" required /></td>
@@ -339,6 +408,92 @@ export default function PurchaseInvoices() {
           </tbody>
         </table>
       </div>
+
+      {/* ADD NEW MEDICINE MODAL */}
+      {showMedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden text-sm">
+            <div className="bg-hospital-navy text-white px-6 py-3 font-bold flex justify-between items-center">
+              <span>+ Add Medicine to Master</span>
+              <button onClick={() => setShowMedModal(false)} className="text-gray-300 hover:text-white font-bold text-xl">&times;</button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-500 font-bold mb-1">Medicine Name *</label>
+                <input 
+                  type="text" 
+                  value={newMedForm.name} 
+                  onChange={e => setNewMedForm({...newMedForm, name: e.target.value.toUpperCase()})}
+                  className="w-full border p-2 rounded focus:ring-hospital-teal" 
+                  placeholder="e.g., DOLO 650"
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 font-bold mb-1">Generic / Composition</label>
+                  <input 
+                    type="text" 
+                    value={newMedForm.generic_name} 
+                    onChange={e => setNewMedForm({...newMedForm, generic_name: e.target.value})}
+                    className="w-full border p-2 rounded" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 font-bold mb-1">Category</label>
+                  <select 
+                    value={newMedForm.category} 
+                    onChange={e => setNewMedForm({...newMedForm, category: e.target.value})}
+                    className="w-full border p-2 rounded bg-white"
+                  >
+                    <option>Tablet</option>
+                    <option>Syrup</option>
+                    <option>Injection</option>
+                    <option>Ointment</option>
+                    <option>Drops</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-500 font-bold mb-1">Manufacturer (Brand)</label>
+                  <input 
+                    type="text" 
+                    value={newMedForm.manufacturer} 
+                    onChange={e => setNewMedForm({...newMedForm, manufacturer: e.target.value})}
+                    className="w-full border p-2 rounded" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 font-bold mb-1">HSN Code</label>
+                  <input 
+                    type="text" 
+                    value={newMedForm.hsn_code} 
+                    onChange={e => setNewMedForm({...newMedForm, hsn_code: e.target.value})}
+                    className="w-full border p-2 rounded" 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end gap-3">
+              <button 
+                onClick={() => setShowMedModal(false)} 
+                className="px-4 py-2 border rounded text-gray-600 font-bold hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveNewMedicine} 
+                className="px-4 py-2 bg-hospital-teal text-white rounded font-bold hover:bg-teal-700 shadow"
+              >
+                Save Medicine
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
