@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { MEDICINE_DATABASE, DEFAULT_GROUPS, DEFAULT_SCHEDULES } from '../data/medicineDatabase'
+import { ACCOUNT_DATABASE } from '../data/accountDatabase' // <-- NEW IMPORT
 import { API_BASE } from '../config.js';
 
 export default function MedicineMaster() {
@@ -50,7 +51,7 @@ export default function MedicineMaster() {
     }
   }
 
-  // Combine active catalog and static database for medicine name auto-suggestions
+  // Combine live catalog and BOTH static databases for auto-suggestions
   const uniqueSuggestions = useMemo(() => {
     const names = new Set()
     const suggestions = []
@@ -61,6 +62,16 @@ export default function MedicineMaster() {
         suggestions.push(m.name)
       }
     })
+
+    if (Array.isArray(ACCOUNT_DATABASE)) {
+      ACCOUNT_DATABASE.forEach(m => {
+        const name = typeof m === 'string' ? m : m.name
+        if (name && !names.has(name)) {
+          names.add(name)
+          suggestions.push(name)
+        }
+      })
+    }
 
     if (Array.isArray(MEDICINE_DATABASE)) {
       MEDICINE_DATABASE.forEach(m => {
@@ -95,11 +106,10 @@ export default function MedicineMaster() {
     return Array.from(scheduleSet).sort()
   }, [medicines])
 
-  // FIX: Robust mapping for all static fields (brandName, composition, packing, etc.)
+  // Auto-fill leveraging both static files
   const handleNameChange = (e) => {
     const selectedName = e.target.value
     
-    // Start with current form data so manual typing isn't lost if no match is found
     let autoData = {
       manufacturer: formData.manufacturer,
       brand_name: formData.brand_name,
@@ -110,22 +120,29 @@ export default function MedicineMaster() {
       barcode: formData.barcode
     }
 
-    // 1. Check static JSON database FIRST (Acts as the perfect baseline template)
+    // 1. Check ACCOUNT_DATABASE first (it has the richest data)
+    const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
+      ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
+      : null
+
+    // 2. Check MEDICINE_DATABASE as a fallback
     const foundInStatic = Array.isArray(MEDICINE_DATABASE)
       ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
       : null
 
-    if (foundInStatic) {
-      autoData.manufacturer = foundInStatic.manufacturer || ''
-      autoData.brand_name = foundInStatic.brandName || ''
-      autoData.major_content = foundInStatic.composition || ''
-      autoData.packing = foundInStatic.packing || ''
-      autoData.group = foundInStatic.group || ''
-      autoData.item_category = foundInStatic.itemCategory || ''
-      autoData.barcode = foundInStatic.code || ''
+    const bestStaticMatch = foundInAccount || foundInStatic
+
+    if (bestStaticMatch) {
+      autoData.manufacturer = bestStaticMatch.manufacturer || ''
+      autoData.brand_name = bestStaticMatch.brandName || ''
+      autoData.major_content = bestStaticMatch.composition || ''
+      autoData.packing = bestStaticMatch.packing || ''
+      autoData.group = bestStaticMatch.group || ''
+      autoData.item_category = bestStaticMatch.itemCategory || ''
+      autoData.barcode = bestStaticMatch.code || ''
     }
 
-    // 2. Check Live PostgreSQL database (Overrides static ONLY if it exists in DB)
+    // 3. Check Live PostgreSQL database (Overrides static ONLY if it exists in DB)
     const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
     
     if (foundInDb) {
@@ -240,7 +257,6 @@ export default function MedicineMaster() {
 
   return (
     <div className="space-y-6 text-sm">
-      {/* Top Header & Navigation Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold text-hospital-navy">MEDICINE MASTER</h2>
@@ -278,7 +294,6 @@ export default function MedicineMaster() {
         </div>
       </div>
 
-      {/* VIEW 1: CREATE / EDIT FORM */}
       {activeTab === 'form' && (
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
           <div className="bg-hospital-teal text-white px-6 py-4 font-bold text-lg flex justify-between items-center">
@@ -297,7 +312,6 @@ export default function MedicineMaster() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Section 1: Basic Information */}
             <div>
               <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Basic Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -352,7 +366,6 @@ export default function MedicineMaster() {
               </div>
             </div>
 
-            {/* Section 2: Categorization & Packaging */}
             <div>
               <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Categorization & Packaging</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -436,7 +449,6 @@ export default function MedicineMaster() {
               </div>
             </div>
 
-            {/* Section 3: Inventory & Location */}
             <div>
               <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Inventory & Location</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -483,7 +495,6 @@ export default function MedicineMaster() {
               </div>
             </div>
 
-            {/* Section 4: Tax & Compliance */}
             <div>
               <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Tax & Compliance</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -544,7 +555,6 @@ export default function MedicineMaster() {
               </div>
             </div>
 
-            {/* Section 5: Notes & Actions */}
             <div>
               <label className="block text-gray-600 font-semibold mb-1">Internal Note</label>
               <input
@@ -577,10 +587,8 @@ export default function MedicineMaster() {
         </div>
       )}
 
-      {/* VIEW 2: DEDICATED CATALOG VIEW */}
       {activeTab === 'catalog' && (
         <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          {/* Search & Actions Bar */}
           <div className="p-4 bg-gray-50 border-b flex flex-wrap items-center justify-between gap-4">
             <div className="relative flex-1 min-w-[280px] max-w-md">
               <input
@@ -606,7 +614,6 @@ export default function MedicineMaster() {
             </button>
           </div>
 
-          {/* Full Catalog Table */}
           <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="bg-hospital-navy text-white sticky top-0 z-10 whitespace-nowrap">
