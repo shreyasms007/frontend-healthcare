@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { MEDICINE_DATABASE, DEFAULT_GROUPS, DEFAULT_SCHEDULES } from '../data/medicineDatabase'
-import { ACCOUNT_DATABASE } from '../data/accountDatabase' // <-- NEW IMPORT
+import { ACCOUNT_DATABASE } from '../data/accountDatabase'
 import { API_BASE } from '../config.js';
 
 export default function MedicineMaster() {
@@ -106,7 +106,7 @@ export default function MedicineMaster() {
     return Array.from(scheduleSet).sort()
   }, [medicines])
 
-  // Auto-fill leveraging both static files
+  // FIX: Reversed priority! Static files now OVERRIDE the live DB for auto-fill.
   const handleNameChange = (e) => {
     const selectedName = e.target.value
     
@@ -120,39 +120,44 @@ export default function MedicineMaster() {
       barcode: formData.barcode
     }
 
-    // 1. Check ACCOUNT_DATABASE first (it has the richest data)
-    const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
-      ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
-      : null
+    // 1. BASELINE: Check Live PostgreSQL database
+    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
+    if (foundInDb) {
+      if (foundInDb.manufacturer) autoData.manufacturer = foundInDb.manufacturer
+      if (foundInDb.brand_name) autoData.brand_name = foundInDb.brand_name
+      if (foundInDb.major_content) autoData.major_content = foundInDb.major_content
+      if (foundInDb.packing) autoData.packing = foundInDb.packing
+      if (foundInDb.group) autoData.group = foundInDb.group
+      if (foundInDb.item_category) autoData.item_category = foundInDb.item_category
+      if (foundInDb.barcode) autoData.barcode = foundInDb.barcode
+    }
 
-    // 2. Check MEDICINE_DATABASE as a fallback
+    // 2. OVERRIDE: Check static MEDICINE_DATABASE
     const foundInStatic = Array.isArray(MEDICINE_DATABASE)
       ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
       : null
-
-    const bestStaticMatch = foundInAccount || foundInStatic
-
-    if (bestStaticMatch) {
-      autoData.manufacturer = bestStaticMatch.manufacturer || ''
-      autoData.brand_name = bestStaticMatch.brandName || ''
-      autoData.major_content = bestStaticMatch.composition || ''
-      autoData.packing = bestStaticMatch.packing || ''
-      autoData.group = bestStaticMatch.group || ''
-      autoData.item_category = bestStaticMatch.itemCategory || ''
-      autoData.barcode = bestStaticMatch.code || ''
+    if (foundInStatic) {
+      if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer
+      if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName
+      if (foundInStatic.composition) autoData.major_content = foundInStatic.composition
+      if (foundInStatic.packing) autoData.packing = foundInStatic.packing
+      if (foundInStatic.group) autoData.group = foundInStatic.group
+      if (foundInStatic.itemCategory) autoData.item_category = foundInStatic.itemCategory
+      if (foundInStatic.code) autoData.barcode = foundInStatic.code
     }
 
-    // 3. Check Live PostgreSQL database (Overrides static ONLY if it exists in DB)
-    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
-    
-    if (foundInDb) {
-      autoData.manufacturer = foundInDb.manufacturer || autoData.manufacturer
-      autoData.brand_name = foundInDb.brand_name || autoData.brand_name
-      autoData.major_content = foundInDb.major_content || autoData.major_content
-      autoData.packing = foundInDb.packing || autoData.packing
-      autoData.group = foundInDb.group || autoData.group
-      autoData.item_category = foundInDb.item_category || autoData.item_category
-      autoData.barcode = foundInDb.barcode || autoData.barcode
+    // 3. ABSOLUTE SOURCE OF TRUTH: Check ACCOUNT_DATABASE (Overrides everything)
+    const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
+      ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
+      : null
+    if (foundInAccount) {
+      if (foundInAccount.manufacturer) autoData.manufacturer = foundInAccount.manufacturer
+      if (foundInAccount.brandName) autoData.brand_name = foundInAccount.brandName
+      if (foundInAccount.composition) autoData.major_content = foundInAccount.composition
+      if (foundInAccount.packing) autoData.packing = foundInAccount.packing
+      if (foundInAccount.group) autoData.group = foundInAccount.group
+      if (foundInAccount.itemCategory) autoData.item_category = foundInAccount.itemCategory
+      if (foundInAccount.code) autoData.barcode = foundInAccount.code
     }
 
     setFormData(prev => ({
