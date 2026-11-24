@@ -16,7 +16,6 @@ export default function SalesBilling() {
 
   const [activeView, setActiveView] = useState('create')
   const [formData, setFormData] = useState({ ...emptyForm })
-  // Snapshot of original items to fix math when editing parked bills
   const [originalItems, setOriginalItems] = useState([])
   const [sales, setSales] = useState([])
   const [inventory, setInventory] = useState([]) 
@@ -91,7 +90,6 @@ export default function SalesBilling() {
     return Array.from(new Set(names));
   }, [inventory])
 
-  // NEW FIX: Filter out negative/0 stock items unless they are currently in the cart
   const availableBatches = useMemo(() => {
     return inventory.filter(inv => {
       const isMatch = (inv.medicine_name === currentItem.medicine_id) || 
@@ -101,11 +99,8 @@ export default function SalesBilling() {
       if (!isMatch) return false;
 
       const batchId = String(inv.batch_number || inv.batch_id || inv.id);
-      
-      // Check if this batch is already sitting in the bill table
       const isInCart = safeItems.some(item => String(item.batch_id) === batchId);
       
-      // Only show the batch in the dropdown if it has stock > 0 OR if it's already in the cart
       return Number(inv.stock_qty || inv.available_stock || 0) > 0 || isInCart;
     });
   }, [inventory, currentItem.medicine_id, safeItems])
@@ -236,7 +231,6 @@ export default function SalesBilling() {
     return list.reduce((sum, item) => sum + ((item.qty || 0) * (item.rate || 0)), 0)
   }
 
-  // NEW FIX: Save function safely merges pending inputs to prevent backend duplicates
   const handleSave = async (isIssuedFlag = false) => {
     if (!formData.phone_number) {
       alert("Phone number is required!")
@@ -473,6 +467,7 @@ export default function SalesBilling() {
     <div className="space-y-6 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
+          <h2 className="text-xl font-bold text-hospital-navy tracking-wide uppercase">SALES BILLING</h2>
           <div className="flex bg-gray-200 p-1 rounded-lg ml-4">
             <button
               onClick={() => { 
@@ -483,7 +478,7 @@ export default function SalesBilling() {
                 setActiveView('create'); 
               }}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-                activeView === 'create' ? 'bg-hospital-teal text-white shadow' : 'text-gray-600 hover:text-hospital-navy'
+                activeView === 'create' ? 'bg-hospital-navy text-white shadow' : 'text-gray-600 hover:text-hospital-navy'
               }`}
             >
               + New Bill
@@ -491,78 +486,82 @@ export default function SalesBilling() {
             <button
               onClick={() => setActiveView('list')}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
-                activeView === 'list' ? 'bg-hospital-teal text-white shadow' : 'text-gray-600 hover:text-hospital-navy'
+                activeView === 'list' ? 'bg-hospital-navy text-white shadow' : 'text-gray-600 hover:text-hospital-navy'
               }`}
             >
               📋 Customers / Sales Ledger
             </button>
             {activeView === 'edit' && (
-              <button className="px-4 py-1.5 rounded-md text-xs font-bold bg-amber-500 text-white shadow cursor-default">
+              <button className="px-4 py-1.5 rounded-md text-xs font-bold bg-amber-500 text-white shadow cursor-default ml-2">
                 ✏️ Editing {formData.is_issued ? 'Issued Invoice' : 'Open Bill'} #{formData.id}
               </button>
             )}
           </div>
         </div>
-        <div className="text-xs text-gray-500">State Code: 29 (Karnataka)</div>
+        <div className="text-xs text-gray-500 font-medium">State Code: 29 (Karnataka)</div>
       </div>
 
       {(activeView === 'create' || activeView === 'edit') && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          <div className="bg-hospital-teal text-white px-6 py-4 font-bold text-lg flex justify-between">
-            <span>{activeView === 'create' ? 'New Sales Counter Bill' : `Edit Bill - Phone: ${formData.phone_number}`}</span>
-            {formData.is_issued && <span className="bg-white text-hospital-teal px-2 py-1 text-xs rounded">ISSUED</span>}
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+          <div className="bg-[#0B162C] text-white px-6 py-4 flex justify-between items-center border-b border-[#1A2C4E]">
+            <span className="text-lg font-extrabold uppercase tracking-widest">
+              {activeView === 'create' ? 'New Sales Counter Bill' : `Edit Bill - Phone: ${formData.phone_number}`}
+            </span>
+            {formData.is_issued && <span className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 px-3 py-1 text-xs font-bold rounded-lg shadow-inner">ISSUED</span>}
           </div>
 
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-gray-600 font-semibold mb-1">Phone Number *</label>
-                <input 
-                  type="text" 
-                  name="phone_number" 
-                  value={formData.phone_number} 
-                  onChange={handlePhoneChange} 
-                  list="phone-suggestions"
-                  autoComplete="off"
-                  className="w-full border p-2 rounded focus:ring-hospital-teal" 
-                  required 
-                />
-                <datalist id="phone-suggestions">
-                  {uniquePhones.map((phone, idx) => (
-                    <option key={idx} value={phone} />
-                  ))}
-                </datalist>
-              </div>
-              <div>
-                <label className="block text-gray-600 font-semibold mb-1">Customer Name</label>
-                <input 
-                  type="text" 
-                  name="customer_name" 
-                  value={formData.customer_name} 
-                  onChange={handleInputChange} 
-                  className="w-full border p-2 rounded focus:ring-hospital-teal" 
-                />
-              </div>
-              <div>
-                <label className="block text-gray-600 font-semibold mb-1">Prescribing Doctor</label>
-                <input 
-                  type="text" 
-                  name="doctor_name" 
-                  value={formData.doctor_name} 
-                  onChange={handleInputChange} 
-                  className="w-full border p-2 rounded focus:ring-hospital-teal" 
-                />
+          <div className="p-8 space-y-8 bg-slate-50">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Phone Number *</label>
+                  <input 
+                    type="text" 
+                    name="phone_number" 
+                    value={formData.phone_number} 
+                    onChange={handlePhoneChange} 
+                    list="phone-suggestions"
+                    autoComplete="off"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-bold text-slate-800" 
+                    required 
+                  />
+                  <datalist id="phone-suggestions">
+                    {uniquePhones.map((phone, idx) => (
+                      <option key={idx} value={phone} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Customer Name</label>
+                  <input 
+                    type="text" 
+                    name="customer_name" 
+                    value={formData.customer_name} 
+                    onChange={handleInputChange} 
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Prescribing Doctor</label>
+                  <input 
+                    type="text" 
+                    name="doctor_name" 
+                    value={formData.doctor_name} 
+                    onChange={handleInputChange} 
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all" 
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="border-t pt-4">
-              <h4 className="font-bold text-hospital-navy mb-3">Billing Line Items</h4>
-              <div className="flex gap-2 items-end mb-4">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+              <h4 className="font-extrabold text-teal-800 border-b border-slate-100 pb-3 mb-5 uppercase tracking-wide">Billing Line Items</h4>
+              <div className="flex gap-4 items-end mb-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
                 <div className="flex-1">
-                  <label className="block text-xs text-gray-500 mb-1">Medicine / Item</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Medicine / Item</label>
                   <input 
                     type="text" 
-                    className="w-full border p-2 rounded" 
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-bold text-slate-700" 
                     value={currentItem.medicine_id} 
                     onChange={handleMedicineChange} 
                     list="inventory-suggestions"
@@ -575,25 +574,18 @@ export default function SalesBilling() {
                   </datalist>
                 </div>
                 
-                <div className="w-48">
-                  <label className="block text-xs text-gray-500 mb-1">Batch ID</label>
+                <div className="w-56">
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Batch ID</label>
                   <select 
-                    className="w-full border p-2 rounded bg-white text-sm" 
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all bg-white font-mono" 
                     value={currentItem.batch_id} 
                     onChange={handleBatchChange}
                   >
                     <option value="">Select Batch</option>
                     {availableBatches.map((b, idx) => {
                       const batchId = b.batch_number || b.batch_id || b.id;
-                      
-                      const originalQty = originalItems
-                        .filter(item => String(item.batch_id) === String(batchId))
-                        .reduce((sum, item) => sum + Number(item.qty), 0);
-                      
-                      const inCart = safeItems
-                        .filter(item => String(item.batch_id) === String(batchId))
-                        .reduce((sum, item) => sum + Number(item.qty), 0);
-                        
+                      const originalQty = originalItems.filter(item => String(item.batch_id) === String(batchId)).reduce((sum, item) => sum + Number(item.qty), 0);
+                      const inCart = safeItems.filter(item => String(item.batch_id) === String(batchId)).reduce((sum, item) => sum + Number(item.qty), 0);
                       const rawStock = Number(b.stock_qty || b.available_stock || 0);
                       const displayStock = (rawStock + originalQty) - inCart; 
 
@@ -607,55 +599,60 @@ export default function SalesBilling() {
                 </div>
 
                 <div className="w-24">
-                  <label className="block text-xs text-gray-500 mb-1">Quantity</label>
-                  <input type="number" min="1" className="w-full border p-2 rounded" value={currentItem.qty} onChange={e => setCurrentItem({...currentItem, qty: Number(e.target.value)})} />
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Quantity</label>
+                  <input type="number" min="1" className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all text-center font-bold text-slate-800" value={currentItem.qty} onChange={e => setCurrentItem({...currentItem, qty: Number(e.target.value)})} />
                 </div>
                 <div className="w-32">
-                  <label className="block text-xs text-gray-500 mb-1">Rate</label>
-                  <input type="number" className="w-full border p-2 rounded bg-gray-50" readOnly value={currentItem.rate} />
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Rate</label>
+                  <input type="number" className="border border-slate-200 p-2.5 rounded-lg w-full bg-slate-100 text-slate-500 font-mono text-right" readOnly value={currentItem.rate} />
                 </div>
-                <button type="button" onClick={handleAddItem} className="bg-gray-200 px-4 py-2 rounded font-bold text-gray-700 hover:bg-gray-300">Add</button>
+                <button type="button" onClick={handleAddItem} className="bg-hospital-navy text-white px-6 py-2.5 rounded-lg font-bold hover:bg-[#152a52] transition-colors shadow-md">Add</button>
               </div>
 
-              <table className="w-full text-left border-collapse mt-4">
-                <thead className="bg-gray-100 border-b">
-                  <tr>
-                    <th className="p-2">Medicine</th>
-                    <th className="p-2 text-center">Batch ID</th>
-                    <th className="p-2 text-center">Qty</th>
-                    <th className="p-2 text-right">Rate</th>
-                    <th className="p-2 text-right">Amount</th>
-                    <th className="p-2 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {safeItems.map((item, idx) => (
-                    <tr key={idx} className="border-b">
-                      <td className="p-2 font-bold">{item.medicine_id}</td>
-                      <td className="p-2 text-center">{item.batch_id}</td>
-                      <td className="p-2 text-center">{item.qty}</td>
-                      <td className="p-2 text-right">₹{Number(item.rate || 0).toFixed(2)}</td>
-                      <td className="p-2 text-right font-bold text-hospital-navy">₹{Number((item.qty * item.rate) || 0).toFixed(2)}</td>
-                      <td className="p-2 text-center">
-                        <button onClick={() => handleRemoveItem(idx)} className="text-red-500 font-bold hover:text-red-700">X</button>
-                      </td>
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-[#0B162C] text-white">
+                    <tr>
+                      <th className="p-3 font-bold tracking-wider text-xs uppercase">Medicine</th>
+                      <th className="p-3 font-bold tracking-wider text-xs uppercase text-center">Batch ID</th>
+                      <th className="p-3 font-bold tracking-wider text-xs uppercase text-center">Qty</th>
+                      <th className="p-3 font-bold tracking-wider text-xs uppercase text-right">Rate</th>
+                      <th className="p-3 font-bold tracking-wider text-xs uppercase text-right">Amount</th>
+                      <th className="p-3 font-bold tracking-wider text-xs uppercase text-center">Action</th>
                     </tr>
-                  ))}
-                  {safeItems.length === 0 && <tr><td colSpan="6" className="p-4 text-center text-gray-400">No items added yet.</td></tr>}
-                </tbody>
-              </table>
-              <div className="flex justify-end mt-4 text-xl font-bold text-hospital-navy">
-                Total: ₹{calculateTotal().toFixed(2)}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {safeItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-extrabold text-slate-800">{item.medicine_id}</td>
+                        <td className="p-3 text-center font-mono text-slate-600">{item.batch_id}</td>
+                        <td className="p-3 text-center font-bold text-slate-700">{item.qty}</td>
+                        <td className="p-3 text-right text-slate-500 font-mono">₹{Number(item.rate || 0).toFixed(2)}</td>
+                        <td className="p-3 text-right font-extrabold text-teal-700 font-mono">₹{Number((item.qty * item.rate) || 0).toFixed(2)}</td>
+                        <td className="p-3 text-center">
+                          <button onClick={() => handleRemoveItem(idx)} className="text-rose-500 font-bold hover:text-rose-700 bg-rose-50 px-2 py-1 rounded transition-colors">X</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {safeItems.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400 font-medium">No items added to the bill yet.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-end mt-6 text-2xl font-extrabold text-[#0B162C] tracking-tight">
+                Total: <span className="ml-2 text-teal-600">₹{calculateTotal().toFixed(2)}</span>
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 border-t pt-4">
-              <button type="button" onClick={() => handleSave(false)} className="bg-hospital-navy text-white px-6 py-3 rounded font-bold hover:bg-blue-900 transition shadow">
+            <div className="flex justify-end gap-4 border-t border-slate-200 pt-6">
+              <button type="button" onClick={() => handleSave(false)} className="bg-white border-2 border-[#0B162C] text-[#0B162C] px-8 py-3 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm">
                 Park / Save Open Bill
               </button>
               
-              <button type="button" onClick={handlePrint} className="bg-hospital-teal text-white px-8 py-3 rounded font-bold hover:bg-teal-700 transition shadow">
-                🖨️ Print & Finalize Bill
+              <button type="button" onClick={handlePrint} className="bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white px-8 py-3 rounded-lg font-bold transition-all shadow-lg shadow-teal-500/20 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print & Finalize Bill
               </button>
             </div>
           </div>
@@ -663,51 +660,58 @@ export default function SalesBilling() {
       )}
 
       {activeView === 'list' && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          <div className="p-4 bg-gray-50 border-b flex gap-4">
-            <div className="relative w-1/3 min-w-[200px]">
-              <input type="text" placeholder="Phone Number..." value={searchPhone} onChange={e => setSearchPhone(e.target.value)} className="w-full border p-2 pl-9 rounded shadow-sm focus:ring-hospital-teal" />
-              <span className="absolute left-3 top-2.5 text-gray-400">📞</span>
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+          <div className="p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap gap-4">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <input type="text" placeholder="Search Phone Number..." value={searchPhone} onChange={e => setSearchPhone(e.target.value)} className="w-full border border-slate-300 p-2.5 pl-10 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono" />
+              <span className="absolute left-3.5 top-3 text-slate-400">📞</span>
             </div>
-            <div className="relative w-1/3 min-w-[200px]">
-              <input type="text" placeholder="Customer Name..." value={searchName} onChange={e => setSearchName(e.target.value)} className="w-full border p-2 pl-9 rounded shadow-sm focus:ring-hospital-teal" />
-              <span className="absolute left-3 top-2.5 text-gray-400">👤</span>
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <input type="text" placeholder="Search Customer Name..." value={searchName} onChange={e => setSearchName(e.target.value)} className="w-full border border-slate-300 p-2.5 pl-10 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all" />
+              <span className="absolute left-3.5 top-3 text-slate-400">👤</span>
             </div>
           </div>
 
-          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[650px] overflow-y-auto custom-scrollbar">
             <table className="w-full text-left border-collapse text-sm">
-              <thead className="bg-hospital-navy text-white sticky top-0">
+              <thead className="bg-[#0B162C] text-white sticky top-0 z-10">
                 <tr>
-                  <th className="p-3">Inv ID</th>
-                  <th className="p-3">Phone Number</th>
-                  <th className="p-3">Customer Name</th>
-                  <th className="p-3 text-right">Total Amount</th>
-                  <th className="p-3 text-center">Status</th>
-                  <th className="p-3 text-center">Action</th>
+                  <th className="p-4 font-bold tracking-wider uppercase text-xs">Inv ID</th>
+                  <th className="p-4 font-bold tracking-wider uppercase text-xs">Phone Number</th>
+                  <th className="p-4 font-bold tracking-wider uppercase text-xs">Customer Name</th>
+                  <th className="p-4 font-bold tracking-wider uppercase text-xs text-right">Total Amount</th>
+                  <th className="p-4 font-bold tracking-wider uppercase text-xs text-center">Status</th>
+                  <th className="p-4 font-bold tracking-wider uppercase text-xs text-center">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {filteredSales.map((sale) => (
-                  <tr key={sale.id} className="hover:bg-blue-50 cursor-pointer transition">
-                    <td className="p-3 font-mono text-gray-500">{sale.invoice_number || `#${sale.id}`}</td>
-                    <td className="p-3 font-bold text-hospital-navy">{sale.phone_number}</td>
-                    <td className="p-3">{sale.customer_name || '-'}</td>
-                    <td className="p-3 text-right font-bold text-emerald-600">₹{parseFloat(sale.total_amount || 0).toFixed(2)}</td>
-                    <td className="p-3 text-center">
+                  <tr key={sale.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 font-mono text-slate-500 font-bold">{sale.invoice_number || `#${sale.id}`}</td>
+                    <td className="p-4 font-bold text-[#0B162C] font-mono">{sale.phone_number}</td>
+                    <td className="p-4 text-slate-700 font-medium">{sale.customer_name || '-'}</td>
+                    <td className="p-4 text-right font-extrabold text-emerald-600 font-mono">₹{parseFloat(sale.total_amount || 0).toFixed(2)}</td>
+                    <td className="p-4 text-center">
                       {sale.is_issued ? (
-                        <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">ISSUED</span>
+                        <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-md text-[11px] font-bold tracking-wide">ISSUED</span>
                       ) : (
-                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-bold">OPEN</span>
+                        <span className="bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1 rounded-md text-[11px] font-bold tracking-wide">OPEN</span>
                       )}
                     </td>
-                    <td className="p-3 text-center">
-                      <button onClick={() => openEditView(sale)} className="bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white border border-teal-300 px-4 py-1.5 rounded font-bold text-xs transition">
+                    <td className="p-4 text-center">
+                      <button onClick={() => openEditView(sale)} className="bg-white text-teal-700 hover:bg-teal-50 hover:text-teal-800 border border-teal-200 px-4 py-1.5 rounded-md font-bold text-xs transition-colors shadow-sm">
                         View / Edit Bill
                       </button>
                     </td>
                   </tr>
                 ))}
+                {filteredSales.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="p-10 text-center text-slate-500 font-medium">
+                      No sales records match your search criteria.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

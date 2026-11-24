@@ -51,7 +51,6 @@ export default function MedicineMaster() {
     }
   }
 
-  // Combine live catalog and BOTH static databases for auto-suggestions
   const uniqueSuggestions = useMemo(() => {
     const names = new Set()
     const suggestions = []
@@ -106,7 +105,6 @@ export default function MedicineMaster() {
     return Array.from(scheduleSet).sort()
   }, [medicines])
 
-  // FIX: Reversed priority! Static files now OVERRIDE the live DB for auto-fill.
   const handleNameChange = (e) => {
     const selectedName = e.target.value
     
@@ -120,7 +118,6 @@ export default function MedicineMaster() {
       barcode: formData.barcode
     }
 
-    // 1. BASELINE: Check Live PostgreSQL database
     const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
     if (foundInDb) {
       if (foundInDb.manufacturer) autoData.manufacturer = foundInDb.manufacturer
@@ -132,7 +129,6 @@ export default function MedicineMaster() {
       if (foundInDb.barcode) autoData.barcode = foundInDb.barcode
     }
 
-    // 2. OVERRIDE: Check static MEDICINE_DATABASE
     const foundInStatic = Array.isArray(MEDICINE_DATABASE)
       ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
       : null
@@ -146,7 +142,6 @@ export default function MedicineMaster() {
       if (foundInStatic.code) autoData.barcode = foundInStatic.code
     }
 
-    // 3. ABSOLUTE SOURCE OF TRUTH: Check ACCOUNT_DATABASE (Overrides everything)
     const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
       ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
       : null
@@ -264,8 +259,8 @@ export default function MedicineMaster() {
     <div className="space-y-6 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-hospital-navy">MEDICINE MASTER</h2>
-          <div className="flex bg-gray-200 p-1 rounded-lg">
+          <h2 className="text-xl font-bold text-hospital-navy tracking-wide uppercase">MEDICINE MASTER</h2>
+          <div className="flex bg-gray-200 p-1 rounded-lg ml-4">
             <button
               type="button"
               onClick={() => {
@@ -274,7 +269,7 @@ export default function MedicineMaster() {
               }}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
                 activeTab === 'form'
-                  ? 'bg-hospital-teal text-white shadow'
+                  ? 'bg-hospital-navy text-white shadow'
                   : 'text-gray-600 hover:text-hospital-navy'
               }`}
             >
@@ -285,7 +280,7 @@ export default function MedicineMaster() {
               onClick={() => setActiveTab('catalog')}
               className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${
                 activeTab === 'catalog'
-                  ? 'bg-hospital-teal text-white shadow'
+                  ? 'bg-hospital-navy text-white shadow'
                   : 'text-gray-600 hover:text-hospital-navy'
               }`}
             >
@@ -294,41 +289,41 @@ export default function MedicineMaster() {
           </div>
         </div>
 
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 font-medium">
           State Code: 29 (Karnataka)
         </div>
       </div>
 
       {activeTab === 'form' && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          <div className="bg-hospital-teal text-white px-6 py-4 font-bold text-lg flex justify-between items-center">
-            <span>
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+          <div className="bg-hospital-navy text-white px-6 py-4 flex justify-between items-center border-b border-[#1A2C4E]">
+            <span className="text-lg font-extrabold uppercase tracking-widest">
               {isEditing ? `Edit Item Master: ${formData.name} (ID: #${formData.id})` : 'Create Item Master'}
             </span>
             {isEditing && (
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="bg-white/20 hover:bg-white/30 text-white text-xs px-3 py-1.5 rounded transition"
+                className="bg-white/20 hover:bg-white/30 text-white text-xs px-4 py-2 rounded-lg transition"
               >
                 Cancel Edit
               </button>
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            <div>
-              <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Basic Information</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <form onSubmit={handleSubmit} className="p-8 space-y-8 bg-slate-50">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+              <h4 className="font-extrabold text-teal-800 border-b border-slate-100 pb-3 mb-5 uppercase tracking-wide">Basic Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Item Name *</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Item Name *</label>
                   <input
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleNameChange}
                     list="medicine-suggestions"
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-bold text-slate-800"
                     autoComplete="off"
                     required
                   />
@@ -339,72 +334,72 @@ export default function MedicineMaster() {
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Manufacturer</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Manufacturer</label>
                   <input
                     type="text"
                     name="manufacturer"
                     value={formData.manufacturer}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Brand Name</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Brand Name</label>
                   <input
                     type="text"
                     name="brand_name"
                     value={formData.brand_name}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                   />
                 </div>
                 <div className="md:col-span-3">
-                  <label className="block text-gray-600 font-semibold mb-1">Major Content (Composition)</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Major Content (Composition)</label>
                   <input
                     type="text"
                     name="major_content"
                     value={formData.major_content}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all bg-slate-50 focus:bg-white"
                   />
                 </div>
               </div>
             </div>
 
-            <div>
-              <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Categorization & Packaging</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+              <h4 className="font-extrabold text-teal-800 border-b border-slate-100 pb-3 mb-5 uppercase tracking-wide">Categorization & Packaging</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Packing</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Packing</label>
                   <input
                     type="text"
                     name="packing"
                     placeholder="e.g. 10x10"
                     value={formData.packing}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Qty / Pack</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Qty / Pack</label>
                   <input
                     type="number"
                     name="qty_per_pack"
                     value={formData.qty_per_pack}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Group (Category)</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Group (Category)</label>
                   <input
                     type="text"
                     name="group"
                     value={formData.group}
                     onChange={handleInputChange}
                     list="group-suggestions"
-                    placeholder="Select or type (e.g. TABLETS)"
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal uppercase"
+                    placeholder="e.g. TABLETS"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all uppercase"
                     autoComplete="off"
                   />
                   <datalist id="group-suggestions">
@@ -414,15 +409,15 @@ export default function MedicineMaster() {
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Schedule</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Schedule</label>
                   <input
                     type="text"
                     name="schedule"
                     value={formData.schedule}
                     onChange={handleInputChange}
                     list="schedule-suggestions"
-                    placeholder="Select or type (e.g. SCHEDULE H1)"
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal uppercase"
+                    placeholder="e.g. SCHEDULE H1"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all uppercase"
                     autoComplete="off"
                   />
                   <datalist id="schedule-suggestions">
@@ -432,159 +427,163 @@ export default function MedicineMaster() {
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Item Category</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Item Category</label>
                   <input
                     type="text"
                     name="item_category"
                     value={formData.item_category}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Profile Category</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Profile Category</label>
                   <input
                     type="text"
                     name="profile_category"
                     value={formData.profile_category}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
                   />
                 </div>
               </div>
             </div>
 
-            <div>
-              <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Inventory & Location</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+              <h4 className="font-extrabold text-teal-800 border-b border-slate-100 pb-3 mb-5 uppercase tracking-wide">Inventory & Location</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Rack / Shelf</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Rack / Shelf</label>
                   <input
                     type="text"
                     name="rack"
                     value={formData.rack}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono uppercase bg-slate-50"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Barcode</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Barcode</label>
                   <input
                     type="text"
                     name="barcode"
                     value={formData.barcode}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Min Qty Alert</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Min Qty Alert</label>
                   <input
                     type="number"
                     name="min_qty"
                     value={formData.min_qty}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">Max Qty Limit</label>
+                  <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Max Qty Limit</label>
                   <input
                     type="number"
                     name="max_qty"
                     value={formData.max_qty}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-mono"
                   />
                 </div>
               </div>
             </div>
 
-            <div>
-              <h4 className="font-bold text-hospital-navy border-b pb-2 mb-4">Tax & Compliance</h4>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-teal-50 to-white p-6 rounded-xl border border-teal-100 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-teal-400"></div>
+              <h4 className="font-extrabold text-teal-800 border-b border-teal-100 pb-3 mb-5 uppercase tracking-wide">Tax & Compliance</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">HSN/SAC Code</label>
+                  <label className="block text-xs text-teal-700 mb-1.5 font-bold uppercase tracking-wider">HSN/SAC Code</label>
                   <input
                     type="text"
                     name="hsn_code"
                     value={formData.hsn_code}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-teal-200 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 outline-none transition-all font-mono shadow-inner"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">GST %</label>
+                  <label className="block text-xs text-teal-700 mb-1.5 font-bold uppercase tracking-wider">GST %</label>
                   <input
                     type="number"
                     step="0.01"
                     name="gst_pct"
                     value={formData.gst_pct}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-teal-200 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 outline-none transition-all shadow-inner"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-600 font-semibold mb-1">CESS %</label>
+                  <label className="block text-xs text-teal-700 mb-1.5 font-bold uppercase tracking-wider">CESS %</label>
                   <input
                     type="number"
                     step="0.01"
                     name="cess_pct"
                     value={formData.cess_pct}
                     onChange={handleInputChange}
-                    className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                    className="border border-teal-200 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 outline-none transition-all shadow-inner"
                   />
                 </div>
-                <div className="flex flex-col justify-center space-y-2 mt-4">
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                <div className="flex flex-col justify-center space-y-3 mt-4">
+                  <label className="flex items-center space-x-2 cursor-pointer hover:text-teal-900">
                     <input
                       type="checkbox"
                       name="requires_license"
                       checked={formData.requires_license}
                       onChange={handleInputChange}
-                      className="rounded text-hospital-teal focus:ring-hospital-teal"
+                      className="accent-teal-600 w-4 h-4"
                     />
-                    <span className="text-gray-600 font-semibold">Requires Additional License</span>
+                    <span className="text-xs text-slate-700 font-bold uppercase tracking-wide">Requires License</span>
                   </label>
-                  <label className="flex items-center space-x-2 cursor-pointer">
+                  <label className="flex items-center space-x-2 cursor-pointer hover:text-teal-900">
                     <input
                       type="checkbox"
                       name="is_active"
                       checked={formData.is_active}
                       onChange={handleInputChange}
-                      className="rounded text-hospital-teal focus:ring-hospital-teal"
+                      className="accent-teal-600 w-4 h-4"
                     />
-                    <span className="text-gray-600 font-semibold">Active Item</span>
+                    <span className="text-xs text-slate-700 font-bold uppercase tracking-wide">Active Item</span>
                   </label>
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-gray-600 font-semibold mb-1">Internal Note</label>
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm transition-shadow hover:shadow-md">
+              <label className="block text-xs text-slate-500 mb-1.5 font-bold uppercase tracking-wider">Internal Note</label>
               <input
                 type="text"
                 name="note"
                 value={formData.note}
                 onChange={handleInputChange}
-                className="w-full border p-2 rounded focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all bg-slate-50 focus:bg-white"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-4 pt-4 border-t border-slate-200">
               {isEditing && (
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="bg-gray-200 text-gray-700 px-6 py-3 rounded font-bold hover:bg-gray-300 transition"
+                  className="bg-white border border-slate-300 text-slate-700 px-6 py-2.5 rounded-lg font-bold hover:bg-slate-50 transition"
                 >
                   Cancel
                 </button>
               )}
               <button
                 type="submit"
-                className="bg-hospital-teal text-white px-8 py-3 rounded font-bold text-lg hover:bg-teal-700 transition-colors shadow"
+                className="bg-hospital-navy text-white px-8 py-3 rounded-lg font-bold hover:bg-[#152a52] transition-colors shadow-lg flex items-center gap-2"
               >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
                 {isEditing ? 'Update Medicine Master' : 'Save Medicine Master'}
               </button>
             </div>
@@ -593,17 +592,17 @@ export default function MedicineMaster() {
       )}
 
       {activeTab === 'catalog' && (
-        <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-          <div className="p-4 bg-gray-50 border-b flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+          <div className="p-5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
             <div className="relative flex-1 min-w-[280px] max-w-md">
               <input
                 type="text"
                 placeholder="Search by name, manufacturer, group, composition, or rack..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full border p-2 pl-9 rounded text-sm bg-white shadow-sm focus:ring-1 focus:ring-hospital-teal focus:border-hospital-teal"
+                className="w-full border border-slate-300 p-2.5 pl-10 rounded-lg text-sm bg-white shadow-sm focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all"
               />
-              <span className="absolute left-3 top-2.5 text-gray-400">🔍</span>
+              <span className="absolute left-3.5 top-3 text-slate-400">🔍</span>
             </div>
 
             <button
@@ -613,94 +612,94 @@ export default function MedicineMaster() {
                 setIsEditing(false)
                 setActiveTab('form')
               }}
-              className="bg-hospital-teal text-white px-4 py-2 rounded text-xs font-bold hover:bg-teal-700 transition flex items-center gap-1 shadow"
+              className="bg-hospital-navy text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-[#152a52] transition-colors shadow-md flex items-center gap-2"
             >
               <span>+</span> Add New Medicine
             </button>
           </div>
 
-          <div className="overflow-x-auto max-h-[650px] overflow-y-auto">
+          <div className="overflow-x-auto max-h-[650px] overflow-y-auto custom-scrollbar">
             <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-hospital-navy text-white sticky top-0 z-10 whitespace-nowrap">
+              <thead className="bg-[#0B162C] text-white sticky top-0 z-10 whitespace-nowrap">
                 <tr>
-                  <th className="p-3 text-center">Action</th>
-                  <th className="p-3">ID</th>
-                  <th className="p-3">Item Name</th>
-                  <th className="p-3">Manufacturer</th>
-                  <th className="p-3">Brand Name</th>
-                  <th className="p-3">Major Content</th>
-                  <th className="p-3">Group</th>
-                  <th className="p-3">Packing</th>
-                  <th className="p-3 text-center">Qty/Pack</th>
-                  <th className="p-3">Rack</th>
-                  <th className="p-3">HSN</th>
-                  <th className="p-3 text-right">GST %</th>
-                  <th className="p-3 text-right">Cess %</th>
-                  <th className="p-3 text-right">Wholesale Rate</th>
-                  <th className="p-3 text-center">Min / Max Qty</th>
-                  <th className="p-3 text-center">Schedule</th>
-                  <th className="p-3 text-center">License Req?</th>
-                  <th className="p-3 text-center">Status</th>
-                  <th className="p-3">Note</th>
+                  <th className="p-4 font-bold tracking-wider">Action</th>
+                  <th className="p-4 font-bold tracking-wider">ID</th>
+                  <th className="p-4 font-bold tracking-wider">Item Name</th>
+                  <th className="p-4 font-bold tracking-wider">Manufacturer</th>
+                  <th className="p-4 font-bold tracking-wider">Brand Name</th>
+                  <th className="p-4 font-bold tracking-wider">Major Content</th>
+                  <th className="p-4 font-bold tracking-wider">Group</th>
+                  <th className="p-4 font-bold tracking-wider">Packing</th>
+                  <th className="p-4 font-bold tracking-wider text-center">Qty/Pack</th>
+                  <th className="p-4 font-bold tracking-wider">Rack</th>
+                  <th className="p-4 font-bold tracking-wider">HSN</th>
+                  <th className="p-4 font-bold tracking-wider text-right">GST %</th>
+                  <th className="p-4 font-bold tracking-wider text-right">Cess %</th>
+                  <th className="p-4 font-bold tracking-wider text-right">Wholesale Rate</th>
+                  <th className="p-4 font-bold tracking-wider text-center">Min / Max Qty</th>
+                  <th className="p-4 font-bold tracking-wider text-center">Schedule</th>
+                  <th className="p-4 font-bold tracking-wider text-center">License Req?</th>
+                  <th className="p-4 font-bold tracking-wider text-center">Status</th>
+                  <th className="p-4 font-bold tracking-wider">Note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 whitespace-nowrap">
+              <tbody className="divide-y divide-slate-200 whitespace-nowrap bg-white">
                 {filteredMedicines.map((m) => (
-                  <tr key={m.id} className="hover:bg-blue-50 transition-colors">
-                    <td className="p-3 text-center">
+                  <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-center">
                       <button
                         type="button"
                         onClick={() => handleEdit(m)}
-                        className="bg-teal-50 text-teal-700 hover:bg-teal-600 hover:text-white border border-teal-300 px-3 py-1 rounded font-bold text-xs transition"
+                        className="bg-white text-teal-700 hover:bg-teal-50 hover:text-teal-800 border border-teal-200 px-3 py-1.5 rounded-md font-bold text-xs transition-colors shadow-sm"
                       >
                         ✏️ Edit
                       </button>
                     </td>
-                    <td className="p-3 font-mono text-gray-500">{m.id}</td>
-                    <td className="p-3 font-bold text-hospital-navy">{m.name}</td>
-                    <td className="p-3 text-gray-700">{m.manufacturer || '-'}</td>
-                    <td className="p-3 text-gray-600">{m.brand_name || '-'}</td>
-                    <td className="p-3 max-w-[200px] truncate" title={m.major_content}>{m.major_content || '-'}</td>
-                    <td className="p-3 font-medium text-slate-800">{m.group || '-'}</td>
-                    <td className="p-3 font-semibold">{m.packing || '-'}</td>
-                    <td className="p-3 text-center">{m.qty_per_pack || 1}</td>
-                    <td className="p-3 font-mono text-indigo-700 bg-indigo-50 px-2 rounded">{m.rack || '-'}</td>
-                    <td className="p-3 font-mono">{m.hsn_code || '-'}</td>
-                    <td className="p-3 text-right font-medium text-emerald-600">{m.gst_pct ? `${m.gst_pct}%` : '0%'}</td>
-                    <td className="p-3 text-right text-gray-600">{m.cess_pct ? `${m.cess_pct}%` : '0%'}</td>
-                    <td className="p-3 text-right font-bold text-gray-800">₹{parseFloat(m.wholesale_rate || 0).toFixed(2)}</td>
-                    <td className="p-3 text-center text-gray-600">
+                    <td className="p-4 font-mono text-slate-500">{m.id}</td>
+                    <td className="p-4 font-extrabold text-slate-800">{m.name}</td>
+                    <td className="p-4 text-slate-600 font-medium">{m.manufacturer || '-'}</td>
+                    <td className="p-4 text-slate-500">{m.brand_name || '-'}</td>
+                    <td className="p-4 max-w-[200px] truncate" title={m.major_content}>{m.major_content || '-'}</td>
+                    <td className="p-4 font-medium text-slate-700">{m.group || '-'}</td>
+                    <td className="p-4 font-semibold text-slate-600">{m.packing || '-'}</td>
+                    <td className="p-4 text-center font-mono">{m.qty_per_pack || 1}</td>
+                    <td className="p-4 font-mono text-indigo-700 bg-indigo-50/50 px-2 rounded">{m.rack || '-'}</td>
+                    <td className="p-4 font-mono text-slate-500">{m.hsn_code || '-'}</td>
+                    <td className="p-4 text-right font-bold text-emerald-600">{m.gst_pct ? `${m.gst_pct}%` : '0%'}</td>
+                    <td className="p-4 text-right text-slate-500">{m.cess_pct ? `${m.cess_pct}%` : '0%'}</td>
+                    <td className="p-4 text-right font-extrabold text-slate-800">₹{parseFloat(m.wholesale_rate || 0).toFixed(2)}</td>
+                    <td className="p-4 text-center text-slate-500 font-mono">
                       {m.min_qty} / {m.max_qty || '∞'}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-4 text-center">
                       {m.schedule ? (
-                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[11px] font-bold">
+                        <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2.5 py-1 rounded text-[10px] font-bold tracking-wide uppercase">
                           {m.schedule}
                         </span>
                       ) : (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-slate-300">-</span>
                       )}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-4 text-center">
                       {m.requires_license ? (
-                        <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[11px] font-semibold">Yes</span>
+                        <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded text-[10px] font-bold tracking-wide uppercase">Yes</span>
                       ) : (
-                        <span className="text-gray-400">No</span>
+                        <span className="text-slate-300">No</span>
                       )}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-4 text-center">
                       {m.is_active ? (
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active"></span>
+                        <span className="inline-block w-3 h-3 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/40" title="Active"></span>
                       ) : (
-                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500" title="Inactive"></span>
+                        <span className="inline-block w-3 h-3 rounded-full bg-rose-500 shadow-sm shadow-rose-500/40" title="Inactive"></span>
                       )}
                     </td>
-                    <td className="p-3 text-gray-500 max-w-[150px] truncate" title={m.note}>{m.note || '-'}</td>
+                    <td className="p-4 text-slate-500 max-w-[150px] truncate" title={m.note}>{m.note || '-'}</td>
                   </tr>
                 ))}
                 {filteredMedicines.length === 0 && (
                   <tr>
-                    <td colSpan="19" className="p-8 text-center text-gray-500">
+                    <td colSpan="19" className="p-10 text-center text-slate-500 font-medium">
                       {searchTerm ? 'No medicines match your search.' : 'No medicines found in catalog.'}
                     </td>
                   </tr>
