@@ -58,7 +58,7 @@ export default function DashboardLayout() {
             <img 
               src="/saraj-logo.png" 
               alt="Saraj Medicals" 
-              className="h-9 w-9 object-contain" 
+              className="h-12 w-12 object-contain" 
             />
             
             <div className="flex flex-col">
