@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../config.js';
 
 export default function PurchaseInvoices() {
-  const navigate = useNavigate()
   const [purchases, setPurchases] = useState([])
   const [suppliers, setSuppliers] = useState([])
   const [medicines, setMedicines] = useState([])
+  const [showRecentInvoices, setShowRecentInvoices] = useState(false)
 
   // Modal states for New Medicine (Exactly matching MedicineMaster schema)
   const [showMedModal, setShowMedModal] = useState(false);
@@ -69,7 +68,7 @@ export default function PurchaseInvoices() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'F10' && !showMedModal) {
+      if (e.key === 'F10' && !showMedModal && !showRecentInvoices) {
         e.preventDefault()
         const formEl = document.getElementById('purchase-gst-form')
         if (formEl) formEl.requestSubmit()
@@ -77,7 +76,7 @@ export default function PurchaseInvoices() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [showMedModal])
+  }, [showMedModal, showRecentInvoices])
 
   const fetchPurchases = async () => {
     try {
@@ -245,183 +244,236 @@ export default function PurchaseInvoices() {
   };
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative min-w-0 max-w-full">
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden text-xs">
 
-        <form id="purchase-gst-form" onSubmit={handleSubmit}>
-          <div className="bg-slate-100 p-4 border-b border-gray-300 grid grid-cols-12 gap-4 items-center">
-
-            {/* Left Info: Supplier & Bill No */}
-            <div className="col-span-5 space-y-2 border-r border-gray-300 pr-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-base font-extrabold text-[#0B162C]">PURCHASE (GST)</span>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/recent-purchases', { state: { purchases } })}
-                    className="bg-[#0B162C] hover:bg-[#152a52] text-teal-300 border border-teal-500/40 px-2.5 py-1 rounded-md text-[11px] font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span className="inline-block w-2 h-2 rounded-full bg-teal-400"></span>
-                    Recent Invoices
-                  </button>
-                </div>
-                <span className="bg-[#0B162C] text-teal-300 border border-teal-500/40 px-2 py-0.5 rounded text-[10px] font-bold">
-                  State Code: {formData.state_code}
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2">
-                  <label className="block text-gray-500 font-semibold">Supplier A/c *</label>
-                  <select value={formData.supplier_id} onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white font-bold text-[#0B162C]" required>
-                    <option value="">-- Select Supplier --</option>
-                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-500 font-semibold">Bill Type</label>
-                  <select value={formData.bill_type} onChange={(e) => setFormData({ ...formData, bill_type: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white font-semibold">
-                    <option value="TAX">TAX</option>
-                    <option value="RETAIL">RETAIL</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-gray-500 font-semibold">Bill No. (Invoice #) *</label>
-                  <input type="text" value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white font-bold" required />
-                </div>
-                <div>
-                  <label className="block text-gray-500 font-semibold">Bill Date *</label>
-                  <input type="date" value={formData.invoice_date} onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white" required />
-                </div>
-              </div>
-            </div>
-
-            {/* Middle Info: E-Way Bill, Due Days, Tax */}
-            <div className="col-span-4 space-y-2 border-r border-gray-300 pr-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-gray-500">Due Days</label>
-                  <input type="number" value={formData.due_days} onChange={(e) => setFormData({ ...formData, due_days: e.target.value })} className="w-full border border-gray-300 p-1 rounded bg-white" />
-                </div>
-                <div>
-                  <label className="block text-gray-500">Net Tax (₹)</label>
-                  <input type="text" value={formData.net_tax.toFixed(2)} readOnly className="w-full border border-gray-300 p-1 rounded bg-gray-100 font-bold text-right" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-gray-500">E-Way Bill No.</label>
-                  <input type="text" value={formData.eway_bill_no} onChange={(e) => setFormData({ ...formData, eway_bill_no: e.target.value })} className="w-full border border-gray-300 p-1 rounded bg-white" />
-                </div>
-                <div>
-                  <label className="block text-gray-500">LR No. / Transport</label>
-                  <input type="text" value={formData.lr_no} onChange={(e) => setFormData({ ...formData, lr_no: e.target.value })} className="w-full border border-gray-300 p-1 rounded bg-white" />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Box: Pharmsoft Black Digital Net Amount Display */}
-            <div className="col-span-3 flex flex-col justify-between bg-[#0B162C] text-white p-3 rounded shadow-inner border border-teal-500/30">
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>Calc Total:</span>
-                <span className="text-teal-300 font-mono">{(formData.subtotal + formData.net_tax).toFixed(2)}</span>
-              </div>
-              <div className="my-1 flex items-baseline justify-between border-y border-white/10 py-1.5">
-                <span className="text-xl font-bold text-teal-400">₹</span>
-                <span className="text-3xl font-extrabold font-mono tracking-tight text-white">
-                  {formData.net_amount.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-400">
-                <span>Total Items: {formData.items.length}</span>
-                <span>Rounded Off</span>
-              </div>
-            </div>
+        {/* TOP HEADER BAR WITH TOGGLE BUTTON NEXT TO PURCHASE (GST) */}
+        <div className="bg-slate-100 px-4 py-3 border-b border-gray-300 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-base font-extrabold text-[#0B162C]">PURCHASE (GST)</span>
+            <button
+              type="button"
+              onClick={() => setShowRecentInvoices(prev => !prev)}
+              className={`px-3 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                showRecentInvoices
+                  ? 'bg-teal-500/20 text-teal-800 border-teal-600/40'
+                  : 'bg-[#0B162C] hover:bg-[#152a52] text-teal-300 border-teal-500/40'
+              }`}
+            >
+              <span className="inline-block w-2 h-2 rounded-full bg-teal-400"></span>
+              {showRecentInvoices ? 'Purchase Entry' : 'Recent Invoices'}
+            </button>
           </div>
+          <span className="bg-[#0B162C] text-teal-300 border border-teal-500/40 px-2.5 py-1 rounded text-[10px] font-bold">
+            State Code: {formData.state_code}
+          </span>
+        </div>
 
-          {/* LINE ITEMS GRID */}
+        {showRecentInvoices ? (
+          /* SEPARATE RECENT PURCHASE INVOICES VIEW (USING ALREADY FETCHED `purchases`) */
           <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse">
-              <thead className="bg-[#0B162C] text-white text-[11px]">
+            <div className="px-4 py-2.5 bg-slate-50 border-b border-gray-200 font-bold text-[#0B162C] flex items-center justify-between">
+              <span>Recent Purchase Invoices</span>
+              <span className="text-slate-500 font-semibold">{purchases.length} Invoices</span>
+            </div>
+            <table className="min-w-full text-left">
+              <thead className="bg-[#0B162C] text-white">
                 <tr>
-                  <th className="py-2 px-2 text-left w-48">Item Name</th>
-                  <th className="py-2 px-1.5 text-left w-24">Batch</th>
-                  <th className="py-2 px-1.5 text-left w-28">Expiry</th>
-                  <th className="py-2 px-1.5 text-right w-14">Qty</th>
-                  <th className="py-2 px-1.5 text-right w-14">Sch</th>
-                  <th className="py-2 px-1.5 text-right w-14">Dis%</th>
-                  <th className="py-2 px-1.5 text-right w-14">Tax%</th>
-                  <th className="py-2 px-1.5 text-right w-20 bg-teal-700 text-white">MRP</th>
-                  <th className="py-2 px-1.5 text-right w-20">Pur Rt</th>
-                  <th className="py-2 px-1.5 text-right w-20">PTR</th>
-                  <th className="py-2 px-1.5 text-right w-20">Sale Rt</th>
-                  <th className="py-2 px-1.5 text-right w-14">Qpk</th>
-                  <th className="py-2 px-2 text-right w-24">Amount</th>
+                  <th className="py-2.5 px-4">Invoice #</th>
+                  <th className="py-2.5 px-4">Supplier</th>
+                  <th className="py-2.5 px-4">Bill Date</th>
+                  <th className="py-2.5 px-4">Net Amount</th>
+                  <th className="py-2.5 px-4">Balance Due</th>
+                  <th className="py-2.5 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-teal-50/20">
-                {formData.items.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-teal-50/50">
-                    <td className="p-1.5">
-                      <select
-                        value={item.medicine_id}
-                        onChange={(e) => {
-                          if (e.target.value === 'ADD_NEW') {
-                            setActiveRowIndex(idx);
-                            setShowMedModal(true);
-                          } else {
-                            handleItemChange(idx, 'medicine_id', e.target.value);
-                          }
-                        }}
-                        className="w-full border border-gray-300 p-1 rounded bg-white font-semibold"
-                        required
-                      >
-                        <option value="">Select Medicine</option>
-                        {medicines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                        <option value="ADD_NEW" className="font-bold text-teal-700 bg-teal-50">
-                          + Add New Medicine...
-                        </option>
-                      </select>
+              <tbody className="divide-y divide-gray-200">
+                {purchases.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="py-6 text-center text-gray-400 font-medium">
+                      No recent purchase invoices found.
                     </td>
-                    <td className="p-1"><input value={item.batch_number} onChange={(e) => handleItemChange(idx, 'batch_number', e.target.value)} className="w-full border border-gray-300 p-1 rounded uppercase" required /></td>
-                    <td className="p-1"><input type="date" value={item.expiry_date} onChange={(e) => handleItemChange(idx, 'expiry_date', e.target.value)} className="w-full border border-gray-300 p-1 rounded" required /></td>
-                    <td className="p-1"><input type="number" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right font-bold" required /></td>
-                    <td className="p-1"><input type="number" value={item.free_qty} onChange={(e) => handleItemChange(idx, 'free_qty', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
-                    <td className="p-1"><input type="number" step="0.1" value={item.dis_pct} onChange={(e) => handleItemChange(idx, 'dis_pct', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
-                    <td className="p-1"><input type="number" value={item.tax_pct} onChange={(e) => handleItemChange(idx, 'tax_pct', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
-                    <td className="p-1"><input type="number" step="0.01" value={item.mrp} onChange={(e) => handleItemChange(idx, 'mrp', e.target.value)} className="w-full border border-teal-500 p-1 rounded text-right font-bold bg-teal-50/50" required /></td>
-                    <td className="p-1"><input type="number" step="0.01" value={item.purchase_rate} onChange={(e) => handleItemChange(idx, 'purchase_rate', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right font-bold" required /></td>
-                    <td className="p-1"><input type="number" step="0.01" value={item.ptr} onChange={(e) => handleItemChange(idx, 'ptr', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
-                    <td className="p-1"><input type="number" step="0.01" value={item.sale_rate} onChange={(e) => handleItemChange(idx, 'sale_rate', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" required /></td>
-                    <td className="p-1"><input type="number" value={item.qpk} onChange={(e) => handleItemChange(idx, 'qpk', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
-                    <td className="p-1.5 text-right font-bold text-[#0B162C] font-mono">₹{item.amount.toFixed(2)}</td>
                   </tr>
-                ))}
+                ) : (
+                  purchases.map(p => (
+                    <tr key={p.id} className="hover:bg-teal-50/40">
+                      <td className="py-2.5 px-4 font-bold text-[#0B162C]">{p.invoice_number}</td>
+                      <td className="py-2.5 px-4 font-medium">{p.supplier_name}</td>
+                      <td className="py-2.5 px-4">{p.invoice_date}</td>
+                      <td className="py-2.5 px-4 font-bold">₹{Number(p.net_amount || 0).toFixed(2)}</td>
+                      <td className="py-2.5 px-4 font-bold text-red-600">₹{Number(p.balance_amount || 0).toFixed(2)}</td>
+                      <td className="py-2.5 px-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.is_settled ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>
+                          {p.is_settled ? 'SETTLED' : 'UNSETTLED'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+        ) : (
+          /* PURCHASE ENTRY FORM VIEW */
+          <form id="purchase-gst-form" onSubmit={handleSubmit}>
+            <div className="bg-slate-100 p-4 border-b border-gray-300 grid grid-cols-12 gap-4 items-center">
 
-          {/* BOTTOM SUMMARY BAR */}
-          <div className="bg-slate-100 p-4 border-t border-gray-300 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={addItemRow} className="bg-[#0B162C] hover:bg-[#152a52] text-teal-300 border border-teal-500/40 px-4 py-2 rounded-lg font-bold transition-all cursor-pointer">
-                + Add Row
-              </button>
-              <div className="flex gap-4 text-gray-600 bg-white px-4 py-1.5 rounded-lg border border-gray-200">
-                <span>Subtotal: <strong>₹{formData.subtotal.toFixed(2)}</strong></span>
-                <span>GST Tax: <strong>₹{formData.net_tax.toFixed(2)}</strong></span>
+              {/* Left Info: Supplier & Bill No */}
+              <div className="col-span-5 space-y-2 border-r border-gray-300 pr-4">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-gray-500 font-semibold">Supplier A/c *</label>
+                    <select value={formData.supplier_id} onChange={(e) => setFormData({ ...formData, supplier_id: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white font-bold text-[#0B162C]" required>
+                      <option value="">-- Select Supplier --</option>
+                      {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-500 font-semibold">Bill Type</label>
+                    <select value={formData.bill_type} onChange={(e) => setFormData({ ...formData, bill_type: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white font-semibold">
+                      <option value="TAX">TAX</option>
+                      <option value="RETAIL">RETAIL</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-gray-500 font-semibold">Bill No. (Invoice #) *</label>
+                    <input type="text" value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white font-bold" required />
+                  </div>
+                  <div>
+                    <label className="block text-gray-500 font-semibold">Bill Date *</label>
+                    <input type="date" value={formData.invoice_date} onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })} className="w-full border border-gray-300 p-1.5 rounded bg-white" required />
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle Info: E-Way Bill, Due Days, Tax */}
+              <div className="col-span-4 space-y-2 border-r border-gray-300 pr-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-gray-500">Due Days</label>
+                    <input type="number" value={formData.due_days} onChange={(e) => setFormData({ ...formData, due_days: e.target.value })} className="w-full border border-gray-300 p-1 rounded bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-gray-500">Net Tax (₹)</label>
+                    <input type="text" value={formData.net_tax.toFixed(2)} readOnly className="w-full border border-gray-300 p-1 rounded bg-gray-100 font-bold text-right" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-gray-500">E-Way Bill No.</label>
+                    <input type="text" value={formData.eway_bill_no} onChange={(e) => setFormData({ ...formData, eway_bill_no: e.target.value })} className="w-full border border-gray-300 p-1 rounded bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-gray-500">LR No. / Transport</label>
+                    <input type="text" value={formData.lr_no} onChange={(e) => setFormData({ ...formData, lr_no: e.target.value })} className="w-full border border-gray-300 p-1 rounded bg-white" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Box: Pharmsoft Black Digital Net Amount Display */}
+              <div className="col-span-3 flex flex-col justify-between bg-[#0B162C] text-white p-3 rounded shadow-inner border border-teal-500/30">
+                <div className="flex justify-between text-[11px] text-slate-400">
+                  <span>Calc Total:</span>
+                  <span className="text-teal-300 font-mono">{(formData.subtotal + formData.net_tax).toFixed(2)}</span>
+                </div>
+                <div className="my-1 flex items-baseline justify-between border-y border-white/10 py-1.5">
+                  <span className="text-xl font-bold text-teal-400">₹</span>
+                  <span className="text-3xl font-extrabold font-mono tracking-tight text-white">
+                    {formData.net_amount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>Total Items: {formData.items.length}</span>
+                  <span>Rounded Off</span>
+                </div>
               </div>
             </div>
-            <button
-              type="submit"
-              className="bg-[#0B162C] hover:bg-[#152a52] text-white border border-teal-500/40 px-8 py-2.5 rounded-lg font-bold transition-all shadow-md hover:shadow-teal-500/20 flex items-center gap-2 cursor-pointer"
-            >
-              <span className="text-teal-400 font-mono">F10</span>
-              <span>— Save Purchase Bill</span>
-            </button>
-          </div>
-        </form>
+
+            {/* LINE ITEMS GRID */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse">
+                <thead className="bg-[#0B162C] text-white text-[11px]">
+                  <tr>
+                    <th className="py-2 px-2 text-left w-48">Item Name</th>
+                    <th className="py-2 px-1.5 text-left w-24">Batch</th>
+                    <th className="py-2 px-1.5 text-left w-28">Expiry</th>
+                    <th className="py-2 px-1.5 text-right w-14">Qty</th>
+                    <th className="py-2 px-1.5 text-right w-14">Sch</th>
+                    <th className="py-2 px-1.5 text-right w-14">Dis%</th>
+                    <th className="py-2 px-1.5 text-right w-14">Tax%</th>
+                    <th className="py-2 px-1.5 text-right w-20 bg-teal-700 text-white">MRP</th>
+                    <th className="py-2 px-1.5 text-right w-20">Pur Rt</th>
+                    <th className="py-2 px-1.5 text-right w-20">PTR</th>
+                    <th className="py-2 px-1.5 text-right w-20">Sale Rt</th>
+                    <th className="py-2 px-1.5 text-right w-14">Qpk</th>
+                    <th className="py-2 px-2 text-right w-24">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-teal-50/20">
+                  {formData.items.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-teal-50/50">
+                      <td className="p-1.5">
+                        <select
+                          value={item.medicine_id}
+                          onChange={(e) => {
+                            if (e.target.value === 'ADD_NEW') {
+                              setActiveRowIndex(idx);
+                              setShowMedModal(true);
+                            } else {
+                              handleItemChange(idx, 'medicine_id', e.target.value);
+                            }
+                          }}
+                          className="w-full border border-gray-300 p-1 rounded bg-white font-semibold"
+                          required
+                        >
+                          <option value="">Select Medicine</option>
+                          {medicines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                          <option value="ADD_NEW" className="font-bold text-teal-700 bg-teal-50">
+                            + Add New Medicine...
+                          </option>
+                        </select>
+                      </td>
+                      <td className="p-1"><input value={item.batch_number} onChange={(e) => handleItemChange(idx, 'batch_number', e.target.value)} className="w-full border border-gray-300 p-1 rounded uppercase" required /></td>
+                      <td className="p-1"><input type="date" value={item.expiry_date} onChange={(e) => handleItemChange(idx, 'expiry_date', e.target.value)} className="w-full border border-gray-300 p-1 rounded" required /></td>
+                      <td className="p-1"><input type="number" value={item.qty} onChange={(e) => handleItemChange(idx, 'qty', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right font-bold" required /></td>
+                      <td className="p-1"><input type="number" value={item.free_qty} onChange={(e) => handleItemChange(idx, 'free_qty', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
+                      <td className="p-1"><input type="number" step="0.1" value={item.dis_pct} onChange={(e) => handleItemChange(idx, 'dis_pct', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
+                      <td className="p-1"><input type="number" value={item.tax_pct} onChange={(e) => handleItemChange(idx, 'tax_pct', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
+                      <td className="p-1"><input type="number" step="0.01" value={item.mrp} onChange={(e) => handleItemChange(idx, 'mrp', e.target.value)} className="w-full border border-teal-500 p-1 rounded text-right font-bold bg-teal-50/50" required /></td>
+                      <td className="p-1"><input type="number" step="0.01" value={item.purchase_rate} onChange={(e) => handleItemChange(idx, 'purchase_rate', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right font-bold" required /></td>
+                      <td className="p-1"><input type="number" step="0.01" value={item.ptr} onChange={(e) => handleItemChange(idx, 'ptr', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
+                      <td className="p-1"><input type="number" step="0.01" value={item.sale_rate} onChange={(e) => handleItemChange(idx, 'sale_rate', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" required /></td>
+                      <td className="p-1"><input type="number" value={item.qpk} onChange={(e) => handleItemChange(idx, 'qpk', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
+                      <td className="p-1.5 text-right font-bold text-[#0B162C] font-mono">₹{item.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* BOTTOM SUMMARY BAR */}
+            <div className="bg-slate-100 p-4 border-t border-gray-300 flex flex-wrap justify-between items-center gap-3">
+              <div className="flex items-center gap-4">
+                <button type="button" onClick={addItemRow} className="bg-[#0B162C] hover:bg-[#152a52] text-teal-300 border border-teal-500/40 px-4 py-2 rounded-lg font-bold transition-all cursor-pointer shrink-0">
+                  + Add Row
+                </button>
+                <div className="flex gap-4 text-gray-600 bg-white px-4 py-1.5 rounded-lg border border-gray-200">
+                  <span>Subtotal: <strong>₹{formData.subtotal.toFixed(2)}</strong></span>
+                  <span>GST Tax: <strong>₹{formData.net_tax.toFixed(2)}</strong></span>
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="bg-[#0B162C] hover:bg-[#152a52] text-white border border-teal-500/40 px-6 py-2.5 rounded-lg font-bold transition-all shadow-md hover:shadow-teal-500/20 flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <span className="text-teal-400 font-mono">F10</span>
+                <span>— Save Purchase Bill</span>
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* EXPANDED ADD NEW MEDICINE MODAL */}
