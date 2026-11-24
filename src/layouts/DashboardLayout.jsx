@@ -48,12 +48,16 @@ export default function DashboardLayout() {
         {/* LOGO AREA */}
         <div className="h-20 bg-[#070F1E] flex items-center px-6 border-b border-white/5 shadow-md shrink-0">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg shadow-lg shadow-teal-500/30 flex items-center justify-center text-white border border-teal-300/20">
-              {/* Medical Cross Icon */}
-              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                <path d="M19 10.5h-4.5V6h-5v4.5H5v5h4.5V20h5v-4.5H19v-5z"/>
-              </svg>
+            
+            {/* NEW CUSTOM SARAJ LOGO */}
+            <div className="h-10 w-10 bg-white rounded-lg shadow-lg shadow-teal-500/30 flex items-center justify-center border border-teal-300/20 overflow-hidden p-0.5">
+              <img 
+                src="/saraj-logo.png" 
+                alt="Saraj Medicals" 
+                className="w-full h-full object-contain" 
+              />
             </div>
+            
             <div className="flex flex-col">
               <span className="text-white font-extrabold tracking-widest text-xl leading-tight">SARAJ</span>
               <span className="text-teal-400 text-[11px] font-bold tracking-widest uppercase">Medicals</span>
