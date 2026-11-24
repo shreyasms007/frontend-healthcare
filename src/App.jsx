@@ -8,6 +8,7 @@ import PurchaseInvoices from './pages/PurchaseInvoices'
 import SupplierPayments from './pages/SupplierPayments'
 import SalesBilling from './pages/SalesBilling'
 import Inventory from './pages/Inventory'
+import Reports from './pages/Reports';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="supplier-payments" element={<SupplierPayments />} />
           <Route path="sales" element={<SalesBilling />} />
           <Route path="inventory" element={<Inventory />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
       </Routes>
     </BrowserRouter>
