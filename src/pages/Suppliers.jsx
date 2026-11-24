@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ACCOUNT_DATABASE } from '../data/accountDatabase.js';
 import { API_BASE } from '../config.js';
@@ -37,6 +37,15 @@ export default function AccountMaster() {
 
   const [formData, setFormData] = useState(initialState);
 
+  const manufacturerOptions = useMemo(() => {
+    const uniqueManufacturers = new Set(
+      (ACCOUNT_DATABASE || [])
+        .map((item) => (item.manufacturer || '').trim())
+        .filter(Boolean)
+    );
+    return Array.from(uniqueManufacturers);
+  }, []);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -44,21 +53,14 @@ export default function AccountMaster() {
 
   const handleNameChange = (e) => {
     const selectedName = e.target.value;
-    const matchedAccount = ACCOUNT_DATABASE.find(
-      (acc) => acc.name.toLowerCase() === selectedName.trim().toLowerCase()
+    const matchedManufacturer = manufacturerOptions.find(
+      (mfg) => mfg.toLowerCase() === selectedName.trim().toLowerCase()
     );
 
-    if (matchedAccount) {
+    if (matchedManufacturer) {
       setFormData((prev) => ({
         ...prev,
-        name: matchedAccount.name,
-        code: matchedAccount.code ?? prev.code,
-        acBank: matchedAccount.acBank ?? prev.acBank,
-        acNumber: matchedAccount.acNumber ?? prev.acNumber,
-        ifscCode: matchedAccount.ifscCode ?? prev.ifscCode,
-        fullAddress: matchedAccount.fullAddress ?? prev.fullAddress,
-        city: matchedAccount.city ?? prev.city,
-        gstnNo: matchedAccount.gstnNo ?? prev.gstnNo,
+        name: matchedManufacturer,
       }));
     } else {
       setFormData((prev) => ({ ...prev, name: selectedName }));
@@ -143,8 +145,8 @@ export default function AccountMaster() {
                   className="border-2 border-teal-500/40 p-2.5 rounded-lg w-full focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all font-bold text-slate-800"
                 />
                 <datalist id="account-suggestions">
-                  {ACCOUNT_DATABASE.map((acc, index) => (
-                    <option key={index} value={acc.name} />
+                  {manufacturerOptions.map((mfgName, index) => (
+                    <option key={index} value={mfgName} />
                   ))}
                 </datalist>
               </div>
