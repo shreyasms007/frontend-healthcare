@@ -37,13 +37,16 @@ export default function AccountMaster() {
 
   const [formData, setFormData] = useState(initialState);
 
-  const manufacturerOptions = useMemo(() => {
-    const uniqueManufacturers = new Set(
-      (ACCOUNT_DATABASE || [])
-        .map((item) => (item.manufacturer || '').trim())
-        .filter(Boolean)
-    );
-    return Array.from(uniqueManufacturers);
+  const accountOptions = useMemo(() => {
+    const seen = new Set();
+    return (ACCOUNT_DATABASE || []).filter((item) => {
+      const label = (item.manufacturer || item.name || '').trim();
+      if (!label) return false;
+      const key = label.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, []);
 
   const handleInputChange = (e) => {
@@ -53,14 +56,44 @@ export default function AccountMaster() {
 
   const handleNameChange = (e) => {
     const selectedName = e.target.value;
-    const matchedManufacturer = manufacturerOptions.find(
-      (mfg) => mfg.toLowerCase() === selectedName.trim().toLowerCase()
-    );
+    const normalized = selectedName.trim().toLowerCase();
 
-    if (matchedManufacturer) {
+    const matchedAccount = (ACCOUNT_DATABASE || []).find((acc) => {
+      const mfg = (acc.manufacturer || '').trim().toLowerCase();
+      const accName = (acc.name || '').trim().toLowerCase();
+      return mfg === normalized || accName === normalized;
+    });
+
+    if (matchedAccount) {
+      const resolvedName = (matchedAccount.manufacturer || matchedAccount.name || selectedName).trim();
       setFormData((prev) => ({
         ...prev,
-        name: matchedManufacturer,
+        name: resolvedName,
+        code: matchedAccount.code || prev.code,
+        acBank: matchedAccount.acBank ?? prev.acBank,
+        acNumber: matchedAccount.acNumber ?? prev.acNumber,
+        ifscCode: matchedAccount.ifscCode ?? prev.ifscCode,
+        micr: matchedAccount.micr ?? prev.micr,
+        fullAddress: matchedAccount.fullAddress ?? prev.fullAddress,
+        city: matchedAccount.city ?? prev.city,
+        pinCode: matchedAccount.pinCode ?? prev.pinCode,
+        phone: matchedAccount.phone ?? prev.phone,
+        contactPerson: matchedAccount.contactPerson ?? prev.contactPerson,
+        email: matchedAccount.email ?? prev.email,
+        area: matchedAccount.area ?? prev.area,
+        category: matchedAccount.category ?? prev.category,
+        gstnNo: matchedAccount.gstnNo ?? prev.gstnNo,
+        gstType: matchedAccount.gstType ?? prev.gstType,
+        dlNo1: matchedAccount.dlNo1 ?? prev.dlNo1,
+        dlNo2: matchedAccount.dlNo2 ?? prev.dlNo2,
+        addnlLicNo: matchedAccount.addnlLicNo ?? prev.addnlLicNo,
+        panNo: matchedAccount.panNo ?? prev.panNo,
+        foodLicence: matchedAccount.foodLicence ?? prev.foodLicence,
+        defaultDisc: matchedAccount.defaultDisc ?? prev.defaultDisc,
+        creditDays: matchedAccount.creditDays ?? prev.creditDays,
+        creditLimit: matchedAccount.creditLimit ?? prev.creditLimit,
+        debitDays: matchedAccount.debitDays ?? prev.debitDays,
+        debitLimit: matchedAccount.debitLimit ?? prev.debitLimit,
       }));
     } else {
       setFormData((prev) => ({ ...prev, name: selectedName }));
@@ -145,9 +178,10 @@ export default function AccountMaster() {
                   className="border-2 border-teal-500/40 p-2.5 rounded-lg w-full focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 outline-none transition-all font-bold text-slate-800"
                 />
                 <datalist id="account-suggestions">
-                  {manufacturerOptions.map((mfgName, index) => (
-                    <option key={index} value={mfgName} />
-                  ))}
+                  {accountOptions.map((acc, index) => {
+                    const label = (acc.manufacturer || acc.name || '').trim();
+                    return <option key={index} value={label} />;
+                  })}
                 </datalist>
               </div>
             </div>
