@@ -45,18 +45,16 @@ export default function DashboardLayout() {
       {/* PREMIUM SIDEBAR */}
       <aside className="w-[260px] bg-[#0B162C] text-slate-300 flex flex-col shadow-2xl relative z-20 shrink-0">
         
-        {/* LOGO AREA */}
+       {/* LOGO AREA */}
         <div className="h-20 bg-[#070F1E] flex items-center px-6 border-b border-white/5 shadow-md shrink-0">
           <div className="flex items-center gap-3">
             
-            {/* NEW CUSTOM SARAJ LOGO */}
-            <div className="h-10 w-10 bg-white rounded-lg shadow-lg shadow-teal-500/30 flex items-center justify-center border border-teal-300/20 overflow-hidden p-0.5">
-              <img 
-                src="/saraj-logo.png" 
-                alt="Saraj Medicals" 
-                className="w-full h-full object-contain" 
-              />
-            </div>
+            {/* NEW NATURAL SARAJ LOGO - NO BORDERS OR WHITE WRAPPERS */}
+            <img 
+              src="/saraj-logo.png" 
+              alt="Saraj Medicals" 
+              className="h-9 w-9 object-contain" 
+            />
             
             <div className="flex flex-col">
               <span className="text-white font-extrabold tracking-widest text-xl leading-tight">SARAJ</span>
