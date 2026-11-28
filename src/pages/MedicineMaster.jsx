@@ -108,58 +108,82 @@ export default function MedicineMaster() {
   const handleNameChange = (e) => {
     const selectedName = e.target.value
     
-    let autoData = {
-      manufacturer: formData.manufacturer,
-      brand_name: formData.brand_name,
-      major_content: formData.major_content,
-      packing: formData.packing,
-      group: formData.group,
-      item_category: formData.item_category,
-      barcode: formData.barcode
-    }
+    // Check if the typed/selected name matches an existing medicine in the DB
+    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.trim().toLowerCase())
 
-    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.toLowerCase())
     if (foundInDb) {
-      if (foundInDb.manufacturer) autoData.manufacturer = foundInDb.manufacturer
-      if (foundInDb.brand_name) autoData.brand_name = foundInDb.brand_name
-      if (foundInDb.major_content) autoData.major_content = foundInDb.major_content
-      if (foundInDb.packing) autoData.packing = foundInDb.packing
-      if (foundInDb.group) autoData.group = foundInDb.group
-      if (foundInDb.item_category) autoData.item_category = foundInDb.item_category
-      if (foundInDb.barcode) autoData.barcode = foundInDb.barcode
-    }
+      // Auto-fill everything to edit the existing medicine
+      setFormData({
+        id: foundInDb.id,
+        name: foundInDb.name || '',
+        manufacturer: foundInDb.manufacturer || '',
+        brand_name: foundInDb.brand_name || '',
+        major_content: foundInDb.major_content || '',
+        packing: foundInDb.packing || '',
+        qty_per_pack: foundInDb.qty_per_pack || 1,
+        group: foundInDb.group || '',
+        item_category: foundInDb.item_category || '',
+        profile_category: foundInDb.profile_category || '',
+        schedule: foundInDb.schedule || '',
+        barcode: foundInDb.barcode || '',
+        rack: foundInDb.rack || '',
+        hsn_code: foundInDb.hsn_code || '',
+        gst_pct: foundInDb.gst_pct || 0,
+        cess_pct: foundInDb.cess_pct || 0,
+        wholesale_rate: foundInDb.wholesale_rate || 0,
+        min_qty: foundInDb.min_qty || 0,
+        max_qty: foundInDb.max_qty || 0,
+        requires_license: !!foundInDb.requires_license,
+        is_active: foundInDb.is_active !== undefined ? foundInDb.is_active : true,
+        note: foundInDb.note || ''
+      })
+      setIsEditing(true)
+    } else {
+      // If it's a new name or from static database, fallback to partial auto-fill
+      let autoData = {
+        manufacturer: formData.manufacturer,
+        brand_name: formData.brand_name,
+        major_content: formData.major_content,
+        packing: formData.packing,
+        group: formData.group,
+        item_category: formData.item_category,
+        barcode: formData.barcode
+      }
 
-    const foundInStatic = Array.isArray(MEDICINE_DATABASE)
-      ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
-      : null
-    if (foundInStatic) {
-      if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer
-      if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName
-      if (foundInStatic.composition) autoData.major_content = foundInStatic.composition
-      if (foundInStatic.packing) autoData.packing = foundInStatic.packing
-      if (foundInStatic.group) autoData.group = foundInStatic.group
-      if (foundInStatic.itemCategory) autoData.item_category = foundInStatic.itemCategory
-      if (foundInStatic.code) autoData.barcode = foundInStatic.code
-    }
+      const foundInStatic = Array.isArray(MEDICINE_DATABASE)
+        ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
+        : null
+      if (foundInStatic) {
+        if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer
+        if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName
+        if (foundInStatic.composition) autoData.major_content = foundInStatic.composition
+        if (foundInStatic.packing) autoData.packing = foundInStatic.packing
+        if (foundInStatic.group) autoData.group = foundInStatic.group
+        if (foundInStatic.itemCategory) autoData.item_category = foundInStatic.itemCategory
+        if (foundInStatic.code) autoData.barcode = foundInStatic.code
+      }
 
-    const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
-      ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
-      : null
-    if (foundInAccount) {
-      if (foundInAccount.manufacturer) autoData.manufacturer = foundInAccount.manufacturer
-      if (foundInAccount.brandName) autoData.brand_name = foundInAccount.brandName
-      if (foundInAccount.composition) autoData.major_content = foundInAccount.composition
-      if (foundInAccount.packing) autoData.packing = foundInAccount.packing
-      if (foundInAccount.group) autoData.group = foundInAccount.group
-      if (foundInAccount.itemCategory) autoData.item_category = foundInAccount.itemCategory
-      if (foundInAccount.code) autoData.barcode = foundInAccount.code
-    }
+      const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
+        ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
+        : null
+      if (foundInAccount) {
+        if (foundInAccount.manufacturer) autoData.manufacturer = foundInAccount.manufacturer
+        if (foundInAccount.brandName) autoData.brand_name = foundInAccount.brandName
+        if (foundInAccount.composition) autoData.major_content = foundInAccount.composition
+        if (foundInAccount.packing) autoData.packing = foundInAccount.packing
+        if (foundInAccount.group) autoData.group = foundInAccount.group
+        if (foundInAccount.itemCategory) autoData.item_category = foundInAccount.itemCategory
+        if (foundInAccount.code) autoData.barcode = foundInAccount.code
+      }
 
-    setFormData(prev => ({
-      ...prev,
-      name: selectedName,
-      ...autoData
-    }))
+      setFormData(prev => ({
+        ...prev,
+        id: null, // Ensure ID is clear for a new entry
+        name: selectedName,
+        ...autoData
+      }))
+      setIsEditing(false)
+    }
   }
 
   const handleInputChange = (e) => {
@@ -323,6 +347,7 @@ export default function MedicineMaster() {
                     value={formData.name}
                     onChange={handleNameChange}
                     list="medicine-suggestions"
+                    placeholder="Type to add new or select to edit"
                     className="border border-slate-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 outline-none transition-all font-bold text-slate-800"
                     autoComplete="off"
                     required
