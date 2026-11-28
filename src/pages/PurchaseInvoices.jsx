@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { API_BASE } from '../config.js';
 
 export default function PurchaseInvoices() {
+  const navigate = useNavigate()
   const [purchases, setPurchases] = useState([])
   const [suppliers, setSuppliers] = useState([])
   const [medicines, setMedicines] = useState([])
@@ -145,6 +147,16 @@ export default function PurchaseInvoices() {
 
   const addItemRow = () => {
     setFormData(prev => ({ ...prev, items: [...prev.items, { ...emptyItem }] }))
+  }
+
+  // --- NEW: Remove Item Row Function ---
+  const removeItemRow = (indexToRemove) => {
+    let newItems = formData.items.filter((_, idx) => idx !== indexToRemove);
+    // Ensure there is always at least one row; if they delete the last one, reset it.
+    if (newItems.length === 0) {
+      newItems = [{ ...emptyItem }];
+    }
+    recalculateTotals(newItems);
   }
 
   const formatForBackend = (dateStr) => {
@@ -409,6 +421,7 @@ export default function PurchaseInvoices() {
                     <th className="py-2 px-1.5 text-right w-20">Sale Rt</th>
                     <th className="py-2 px-1.5 text-right w-14">Qpk</th>
                     <th className="py-2 px-2 text-right w-24">Amount</th>
+                    <th className="py-2 px-1 text-center w-8"></th> {/* Delete Column Header */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-teal-50/20">
@@ -447,6 +460,18 @@ export default function PurchaseInvoices() {
                       <td className="p-1"><input type="number" step="0.01" value={item.sale_rate} onChange={(e) => handleItemChange(idx, 'sale_rate', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" required /></td>
                       <td className="p-1"><input type="number" value={item.qpk} onChange={(e) => handleItemChange(idx, 'qpk', e.target.value)} className="w-full border border-gray-300 p-1 rounded text-right" /></td>
                       <td className="p-1.5 text-right font-bold text-[#0B162C] font-mono">₹{item.amount.toFixed(2)}</td>
+                      
+                      {/* NEW: Delete Button Cell */}
+                      <td className="p-1 text-center">
+                        <button
+                          type="button"
+                          onClick={() => removeItemRow(idx)}
+                          className="text-rose-400 hover:text-rose-600 font-bold p-1 rounded hover:bg-rose-50 transition-colors"
+                          title="Remove Row"
+                        >
+                          ✕
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

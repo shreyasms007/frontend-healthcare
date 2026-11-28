@@ -108,14 +108,11 @@ export default function MedicineMaster() {
   const handleNameChange = (e) => {
     const selectedName = e.target.value;
     
-    // 1. Instantly update the name field so typing is seamless & editable
     setFormData(prev => ({
       ...prev,
       name: selectedName
     }));
 
-    // 2. Stop auto-filling if user is actively editing a loaded DB record
-    // (This stops the form from locking up when you try to modify the name)
     if (isEditing) {
       return; 
     }
@@ -123,7 +120,6 @@ export default function MedicineMaster() {
     const normalizedName = selectedName.trim().toLowerCase();
     if (!normalizedName) return;
     
-    // 3. Check if exact match exists in the backend Database
     const foundInDb = medicines.find(m => (m.name || '').trim().toLowerCase() === normalizedName);
     
     if (foundInDb) {
@@ -155,7 +151,6 @@ export default function MedicineMaster() {
       return;
     }
 
-    // 4. If NOT in DB, fallback to static lists (maps your exact array fields perfectly)
     const checkStaticMatch = (m) => {
       const mName = typeof m === 'string' ? m : (m.name || '');
       return mName.trim().toLowerCase() === normalizedName;
@@ -170,12 +165,12 @@ export default function MedicineMaster() {
         ...prev,
         id: null,
         manufacturer: foundInStatic.manufacturer || prev.manufacturer,
-        brand_name: foundInStatic.brandName || foundInStatic.brand_name || prev.brand_name, // Maps brandName
-        major_content: foundInStatic.composition || foundInStatic.major_content || prev.major_content, // Maps composition
+        brand_name: foundInStatic.brandName || foundInStatic.brand_name || prev.brand_name,
+        major_content: foundInStatic.composition || foundInStatic.major_content || prev.major_content,
         packing: foundInStatic.packing || prev.packing,
         group: foundInStatic.group || prev.group,
-        item_category: foundInStatic.itemCategory || foundInStatic.item_category || prev.item_category, // Maps itemCategory
-        barcode: foundInStatic.code || foundInStatic.barcode || prev.barcode // Maps code to barcode
+        item_category: foundInStatic.itemCategory || foundInStatic.item_category || prev.item_category,
+        barcode: foundInStatic.code || foundInStatic.barcode || prev.barcode
       }));
     }
   };
@@ -226,14 +221,23 @@ export default function MedicineMaster() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    const parsedMin = parseInt(formData.min_qty, 10) || 0;
+    const parsedMax = parseInt(formData.max_qty, 10) || 0;
+    const parsedQtyPerPack = parseInt(formData.qty_per_pack, 10) || 1;
+
+    if (parsedMax > 0 && parsedMin > parsedMax) {
+      alert("Validation Error: Min Qty Alert cannot be greater than Max Qty Limit.");
+      return; 
+    }
+
     const payload = {
       ...formData,
-      qty_per_pack: parseInt(formData.qty_per_pack, 10) || 1,
+      qty_per_pack: parsedQtyPerPack,
       gst_pct: parseFloat(formData.gst_pct) || 0,
       cess_pct: parseFloat(formData.cess_pct) || 0,
       wholesale_rate: parseFloat(formData.wholesale_rate) || 0,
-      min_qty: parseInt(formData.min_qty, 10) || 0,
-      max_qty: parseInt(formData.max_qty, 10) || 0
+      min_qty: parsedMin,
+      max_qty: parsedMax
     }
 
     const method = isEditing ? 'PUT' : 'POST'
