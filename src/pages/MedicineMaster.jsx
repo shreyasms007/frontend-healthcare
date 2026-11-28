@@ -106,16 +106,29 @@ export default function MedicineMaster() {
   }, [medicines])
 
   const handleNameChange = (e) => {
-    const selectedName = e.target.value
+    const selectedName = e.target.value;
     
-    // Check if the typed/selected name matches an existing medicine in the DB
-    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === selectedName.trim().toLowerCase())
+    // 1. Always instantly update the name state so typing feels smooth
+    setFormData(prev => ({
+      ...prev,
+      name: selectedName
+    }));
 
+    // 2. If we are already editing an existing record, stop here. 
+    // This allows you to edit the loaded name (e.g., adding "10G") without it resetting.
+    if (isEditing) {
+      return; 
+    }
+
+    const normalizedName = selectedName.trim().toLowerCase();
+    
+    // 3. If typing a fresh name that perfectly matches the database, trigger an auto-load/edit
+    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === normalizedName);
+    
     if (foundInDb) {
-      // Auto-fill everything to edit the existing medicine
       setFormData({
         id: foundInDb.id,
-        name: foundInDb.name || '',
+        name: selectedName, // Keep the exact capitalization the user just typed/selected
         manufacturer: foundInDb.manufacturer || '',
         brand_name: foundInDb.brand_name || '',
         major_content: foundInDb.major_content || '',
@@ -136,11 +149,13 @@ export default function MedicineMaster() {
         requires_license: !!foundInDb.requires_license,
         is_active: foundInDb.is_active !== undefined ? foundInDb.is_active : true,
         note: foundInDb.note || ''
-      })
-      setIsEditing(true)
-    } else {
-      // If it's a new name or from static database, fallback to partial auto-fill
-      let autoData = {
+      });
+      setIsEditing(true);
+      return;
+    }
+
+    // 4. If not found in DB, try to pull smart defaults from static files
+    let autoData = {
         manufacturer: formData.manufacturer,
         brand_name: formData.brand_name,
         major_content: formData.major_content,
@@ -148,42 +163,42 @@ export default function MedicineMaster() {
         group: formData.group,
         item_category: formData.item_category,
         barcode: formData.barcode
-      }
+    };
 
-      const foundInStatic = Array.isArray(MEDICINE_DATABASE)
-        ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
-        : null
-      if (foundInStatic) {
-        if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer
-        if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName
-        if (foundInStatic.composition) autoData.major_content = foundInStatic.composition
-        if (foundInStatic.packing) autoData.packing = foundInStatic.packing
-        if (foundInStatic.group) autoData.group = foundInStatic.group
-        if (foundInStatic.itemCategory) autoData.item_category = foundInStatic.itemCategory
-        if (foundInStatic.code) autoData.barcode = foundInStatic.code
-      }
-
-      const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
-        ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === selectedName.toLowerCase())
-        : null
-      if (foundInAccount) {
-        if (foundInAccount.manufacturer) autoData.manufacturer = foundInAccount.manufacturer
-        if (foundInAccount.brandName) autoData.brand_name = foundInAccount.brandName
-        if (foundInAccount.composition) autoData.major_content = foundInAccount.composition
-        if (foundInAccount.packing) autoData.packing = foundInAccount.packing
-        if (foundInAccount.group) autoData.group = foundInAccount.group
-        if (foundInAccount.itemCategory) autoData.item_category = foundInAccount.itemCategory
-        if (foundInAccount.code) autoData.barcode = foundInAccount.code
-      }
-
-      setFormData(prev => ({
-        ...prev,
-        id: null, // Ensure ID is clear for a new entry
-        name: selectedName,
-        ...autoData
-      }))
-      setIsEditing(false)
+    const foundInStatic = Array.isArray(MEDICINE_DATABASE)
+      ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === normalizedName)
+      : null;
+    
+    if (foundInStatic) {
+      if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer;
+      if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName;
+      if (foundInStatic.composition) autoData.major_content = foundInStatic.composition;
+      if (foundInStatic.packing) autoData.packing = foundInStatic.packing;
+      if (foundInStatic.group) autoData.group = foundInStatic.group;
+      if (foundInStatic.itemCategory) autoData.item_category = foundInStatic.itemCategory;
+      if (foundInStatic.code) autoData.barcode = foundInStatic.code;
     }
+
+    const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
+      ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === normalizedName)
+      : null;
+      
+    if (foundInAccount) {
+      if (foundInAccount.manufacturer) autoData.manufacturer = foundInAccount.manufacturer;
+      if (foundInAccount.brandName) autoData.brand_name = foundInAccount.brandName;
+      if (foundInAccount.composition) autoData.major_content = foundInAccount.composition;
+      if (foundInAccount.packing) autoData.packing = foundInAccount.packing;
+      if (foundInAccount.group) autoData.group = foundInAccount.group;
+      if (foundInAccount.itemCategory) autoData.item_category = foundInAccount.itemCategory;
+      if (foundInAccount.code) autoData.barcode = foundInAccount.code;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      id: null,
+      ...autoData
+    }));
+    setIsEditing(false);
   }
 
   const handleInputChange = (e) => {
