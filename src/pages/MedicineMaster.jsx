@@ -108,27 +108,28 @@ export default function MedicineMaster() {
   const handleNameChange = (e) => {
     const selectedName = e.target.value;
     
-    // 1. Always instantly update the name state so typing feels smooth
+    // 1. Instantly update the name field so typing is seamless & editable
     setFormData(prev => ({
       ...prev,
       name: selectedName
     }));
 
-    // 2. If we are already editing an existing record, stop here. 
-    // This allows you to edit the loaded name (e.g., adding "10G") without it resetting.
+    // 2. Stop auto-filling if user is actively editing a loaded DB record
+    // (This stops the form from locking up when you try to modify the name)
     if (isEditing) {
       return; 
     }
 
     const normalizedName = selectedName.trim().toLowerCase();
+    if (!normalizedName) return;
     
-    // 3. If typing a fresh name that perfectly matches the database, trigger an auto-load/edit
-    const foundInDb = medicines.find(m => m.name && m.name.toLowerCase() === normalizedName);
+    // 3. Check if exact match exists in the backend Database
+    const foundInDb = medicines.find(m => (m.name || '').trim().toLowerCase() === normalizedName);
     
     if (foundInDb) {
       setFormData({
         id: foundInDb.id,
-        name: selectedName, // Keep the exact capitalization the user just typed/selected
+        name: selectedName, 
         manufacturer: foundInDb.manufacturer || '',
         brand_name: foundInDb.brand_name || '',
         major_content: foundInDb.major_content || '',
@@ -154,52 +155,30 @@ export default function MedicineMaster() {
       return;
     }
 
-    // 4. If not found in DB, try to pull smart defaults from static files
-    let autoData = {
-        manufacturer: formData.manufacturer,
-        brand_name: formData.brand_name,
-        major_content: formData.major_content,
-        packing: formData.packing,
-        group: formData.group,
-        item_category: formData.item_category,
-        barcode: formData.barcode
+    // 4. If NOT in DB, fallback to static lists (maps your exact array fields perfectly)
+    const checkStaticMatch = (m) => {
+      const mName = typeof m === 'string' ? m : (m.name || '');
+      return mName.trim().toLowerCase() === normalizedName;
     };
 
-    const foundInStatic = Array.isArray(MEDICINE_DATABASE)
-      ? MEDICINE_DATABASE.find(m => (m.name || m).toLowerCase() === normalizedName)
-      : null;
-    
-    if (foundInStatic) {
-      if (foundInStatic.manufacturer) autoData.manufacturer = foundInStatic.manufacturer;
-      if (foundInStatic.brandName) autoData.brand_name = foundInStatic.brandName;
-      if (foundInStatic.composition) autoData.major_content = foundInStatic.composition;
-      if (foundInStatic.packing) autoData.packing = foundInStatic.packing;
-      if (foundInStatic.group) autoData.group = foundInStatic.group;
-      if (foundInStatic.itemCategory) autoData.item_category = foundInStatic.itemCategory;
-      if (foundInStatic.code) autoData.barcode = foundInStatic.code;
-    }
+    let foundInStatic = null;
+    if (Array.isArray(MEDICINE_DATABASE)) foundInStatic = MEDICINE_DATABASE.find(checkStaticMatch);
+    if (!foundInStatic && Array.isArray(ACCOUNT_DATABASE)) foundInStatic = ACCOUNT_DATABASE.find(checkStaticMatch);
 
-    const foundInAccount = Array.isArray(ACCOUNT_DATABASE)
-      ? ACCOUNT_DATABASE.find(m => (m.name || m).toLowerCase() === normalizedName)
-      : null;
-      
-    if (foundInAccount) {
-      if (foundInAccount.manufacturer) autoData.manufacturer = foundInAccount.manufacturer;
-      if (foundInAccount.brandName) autoData.brand_name = foundInAccount.brandName;
-      if (foundInAccount.composition) autoData.major_content = foundInAccount.composition;
-      if (foundInAccount.packing) autoData.packing = foundInAccount.packing;
-      if (foundInAccount.group) autoData.group = foundInAccount.group;
-      if (foundInAccount.itemCategory) autoData.item_category = foundInAccount.itemCategory;
-      if (foundInAccount.code) autoData.barcode = foundInAccount.code;
+    if (foundInStatic && typeof foundInStatic === 'object') {
+      setFormData(prev => ({
+        ...prev,
+        id: null,
+        manufacturer: foundInStatic.manufacturer || prev.manufacturer,
+        brand_name: foundInStatic.brandName || foundInStatic.brand_name || prev.brand_name, // Maps brandName
+        major_content: foundInStatic.composition || foundInStatic.major_content || prev.major_content, // Maps composition
+        packing: foundInStatic.packing || prev.packing,
+        group: foundInStatic.group || prev.group,
+        item_category: foundInStatic.itemCategory || foundInStatic.item_category || prev.item_category, // Maps itemCategory
+        barcode: foundInStatic.code || foundInStatic.barcode || prev.barcode // Maps code to barcode
+      }));
     }
-
-    setFormData(prev => ({
-      ...prev,
-      id: null,
-      ...autoData
-    }));
-    setIsEditing(false);
-  }
+  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
